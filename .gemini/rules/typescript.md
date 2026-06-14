@@ -1,9 +1,11 @@
 # TypeScript Rules
 
 ## Purpose
+
 Enforces strict type safety to eliminate runtime errors, specifically tailored for Node.js ESM (`NodeNext`).
 
 ## Instructions
+
 - **ESM NodeNext Imports (CRITICAL)**:
   - Because `tsconfig.json` specifies `"moduleResolution": "NodeNext"`, **ALL relative imports MUST include the `.js` extension** (e.g., `import { helper } from './utils.js'`), even if the target file is `.ts` or `.tsx`.
 - **Strict Typing**:

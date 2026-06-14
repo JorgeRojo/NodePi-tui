@@ -1,9 +1,11 @@
 # Testing Rules (Vitest)
 
 ## Purpose
+
 Establishes testing standards for React-Ink components, logic services, and test preservation using Vitest.
 
 ## Instructions
+
 - **Test-Driven Development (TDD)**: ALWAYS use TDD. Write tests before implementing any functional code or UI component. Every feature, helper, and component must have complete test coverage.
 - **Test Preservation Protocol**:
   - Examine existing tests before modifying them.

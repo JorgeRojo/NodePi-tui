@@ -1,9 +1,11 @@
 # Frontend Architecture Conventions (React + Ink + Zustand)
 
 ## Purpose
+
 Defines architectural patterns for TUI development using React, Ink, and Zustand in NodePi-tui.
 
 ## Instructions
+
 - **Layout Engine (Ink/Yoga)**:
   - Exclusively use Ink's `<Box>` components with Flexbox properties for all layouts. Do not use manual string padding, manual line breaks, or complex string manipulations to align elements.
 - **Console Output Rules**:

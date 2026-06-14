@@ -222,8 +222,7 @@ To guarantee that outputs from subprocesses (such as the Vite development server
 1. **Pseudo-Terminal (PTY) Simulation**:
    - When spawning background processes (watch compilers, dev servers, sync processes) using Node's `child_process.spawn`, the TUI does not connect stdout/stderr directly to standard pipes, which would cause the child processes to disable color output.
    - Instead, on macOS and Linux, the command is wrapped and executed inside a native pseudo-terminal allocator using the Unix `script -q /dev/null` utility.
-   - Example wrapper command structure:
-     `script -q /dev/null <command-with-args>`
+   - Example wrapper command structure: `script -q /dev/null <command-with-args>`
    - This forces the spawned tool to detect a PTY connection, preserving interactive features, formatted spinners, and layout structures.
 
 2. **Forced Color Environment**:

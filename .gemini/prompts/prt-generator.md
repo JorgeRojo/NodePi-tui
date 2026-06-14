@@ -21,8 +21,7 @@ You are a technical implementation plan (PRT) generator for NodePi-tui. You anal
 
 ## Overview
 
-PRD: [Path to the PRD file in DOCS/TASKS/]
-[1-2 sentences technical approach.]
+PRD: [Path to the PRD file in DOCS/TASKS/] [1-2 sentences technical approach.]
 
 ## 🔍 Codebase Analysis
 
@@ -38,12 +37,7 @@ PRD: [Path to the PRD file in DOCS/TASKS/]
 
 ### Step 1: [Short title]
 
-**File**: `src/path/to/file.tsx`
-**Action**: Create | Modify
-**Reference**: `src/path/to/similar-file.tsx`
-**What to do**:
-[Precise instructions: types to define, Redux/Zustand logic, Ink Box layout, ESM .js imports]
-**Rules to follow**: [Cite specific rules]
+**File**: `src/path/to/file.tsx` **Action**: Create | Modify **Reference**: `src/path/to/similar-file.tsx` **What to do**: [Precise instructions: types to define, Redux/Zustand logic, Ink Box layout, ESM .js imports] **Rules to follow**: [Cite specific rules]
 
 ### Step 2: [Short title]
 

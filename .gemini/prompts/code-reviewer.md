@@ -17,8 +17,7 @@ Default verdict is BLOCKED. APPROVED requires perfect compliance with the PRD, P
 # Automated Checks (MANDATORY)
 
 1. Run `pnpm tsc --noEmit`.
-2. Run `pnpm test [ModifiedComponents]`.
-   If ANY check fails, stop the review and output BLOCKED.
+2. Run `pnpm test [ModifiedComponents]`. If ANY check fails, stop the review and output BLOCKED.
 
 # Severity Classification
 
@@ -28,8 +27,7 @@ Default verdict is BLOCKED. APPROVED requires perfect compliance with the PRD, P
 
 # Output
 
-Save your Review Report as an Artifact.
-Return the artifact path and your verdict (`APPROVED` or `BLOCKED`) to the orchestrator.
+Save your Review Report as an Artifact. Return the artifact path and your verdict (`APPROVED` or `BLOCKED`) to the orchestrator.
 
 ```markdown
 # Code Review: [Task Name]

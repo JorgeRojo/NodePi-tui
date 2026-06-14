@@ -2,8 +2,7 @@
 
 ## Overview
 
-PRD: `./DOCS/TASKS/PRD-01-Boilerplate.md`
-This task focuses on configuring the foundational ESM/TypeScript setup for the NodePi TUI project. It will involve establishing the entry point scripts, creating a base React/Ink component for rendering, and configuring the Vitest framework to ensure tests pass in a headless TUI environment, applying all the workspace rules.
+PRD: `./DOCS/TASKS/PRD-01-Boilerplate.md` This task focuses on configuring the foundational ESM/TypeScript setup for the NodePi TUI project. It will involve establishing the entry point scripts, creating a base React/Ink component for rendering, and configuring the Vitest framework to ensure tests pass in a headless TUI environment, applying all the workspace rules.
 
 ## 🔍 Codebase Analysis
 
@@ -24,45 +23,33 @@ This task focuses on configuring the foundational ESM/TypeScript setup for the N
 
 ### Step 1: Create the Root UI Component
 
-**File**: `src/ui/App.tsx`
-**Action**: Create
-**Reference**: `architecture-ink.md`
-**What to do**:
+**File**: `src/ui/App.tsx` **Action**: Create **Reference**: `architecture-ink.md` **What to do**:
 
 - Import `React` from `react`.
 - Import `{ Text, Box }` from `ink`.
 - Create a functional component `App` that returns a `<Box>` containing a `<Text>` element with the string `NodePi Initialization...`.
-- Apply a basic color via Ink's native color props (e.g., `<Text color="green">NodePi Initialization...</Text>`).
-  **Rules to follow**: `typescript.md` (Strict typings, ESM `.js` imports for any internal components later), `architecture-ink.md` (Use Ink components).
+- Apply a basic color via Ink's native color props (e.g., `<Text color="green">NodePi Initialization...</Text>`). **Rules to follow**: `typescript.md` (Strict typings, ESM `.js` imports for any internal components later), `architecture-ink.md` (Use Ink components).
 
 ### Step 2: Create the CLI Entrypoint
 
-**File**: `src/index.tsx`
-**Action**: Create
-**Reference**: `typescript.md`
-**What to do**:
+**File**: `src/index.tsx` **Action**: Create **Reference**: `typescript.md` **What to do**:
 
 - Add the `#!/usr/bin/env node` shebang at the top.
 - Import `React` from `react`.
 - Import `{ render }` from `ink`.
 - Import the `App` component from `./ui/App.js` (Crucial: use the `.js` extension).
-- Execute `render(<App />)`.
-  **Rules to follow**: `typescript.md` (NodeNext ESM imports), `agent-harnessing.md` (macOS/Linux executable paths).
+- Execute `render(<App />)`. **Rules to follow**: `typescript.md` (NodeNext ESM imports), `agent-harnessing.md` (macOS/Linux executable paths).
 
 ### Step 3: Implement Unit Tests for the Base Component
 
-**File**: `src/__tests__/App.test.tsx`
-**Action**: Create
-**Reference**: `testing-vitest.md`
-**What to do**:
+**File**: `src/__tests__/App.test.tsx` **Action**: Create **Reference**: `testing-vitest.md` **What to do**:
 
 - Import `React` from `react`.
 - Import `{ render }` from `ink-testing-library`.
 - Import `{ describe, it, expect, afterEach, vi }` from `vitest`.
 - Import the `App` component from `../ui/App.js`.
 - Add an `afterEach` hook calling `vi.clearAllMocks()`.
-- Write a test suite verifying that `render(<App />)` correctly outputs the expected text. Use `lastFrame()` to verify `NodePi Initialization...` is present.
-  **Rules to follow**: `testing-vitest.md` (TDD, test headless Ink rendering, use `vitest`), `typescript.md` (ESM imports).
+- Write a test suite verifying that `render(<App />)` correctly outputs the expected text. Use `lastFrame()` to verify `NodePi Initialization...` is present. **Rules to follow**: `testing-vitest.md` (TDD, test headless Ink rendering, use `vitest`), `typescript.md` (ESM imports).
 
 ## 🔗 Step Dependencies
 

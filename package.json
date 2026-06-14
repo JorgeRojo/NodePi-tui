@@ -12,7 +12,8 @@
     "install-bin": "./scripts/install-bin.sh",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint": "eslint"
   },
   "engines": {
     "node": ">=20.11.0"
