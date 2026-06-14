@@ -57,5 +57,5 @@ The Config Manager will act as the core engine for NodePi-tui's configuration li
 
 ## ✅ Validation Checklist
 
-- [ ] TypeScript: `pnpm tsc --noEmit`
-- [ ] Tests: `pnpm vitest run src/core/config-manager`
+- [x] TypeScript: `pnpm tsc --noEmit`
+- [x] Tests: `pnpm vitest run src/core/config-manager`
