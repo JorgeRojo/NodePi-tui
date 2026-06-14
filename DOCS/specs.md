@@ -129,7 +129,7 @@ To maximize automation and minimize manual decisions for the user, the TUI incor
 3. **Manual Override (Clean/Force Run)**:
    - The TUI shortcut **`[f]`** (Force/Clean Run) bypasses the smart decision engine. It clears cached hashes, deletes `node_modules` and `dist` directories in local dependencies, and forces a complete, sequential run of all installation and build phases from scratch.
 
-### 1.8 Script Role Configurations & Interactive Selectors
+### 1.8 Script Role Configurations & AI-Driven Script Inference (Agy)
 
 Every project directory managed by NodePi TUI can act in one of two distinct roles:
 
@@ -138,14 +138,15 @@ Every project directory managed by NodePi TUI can act in one of two distinct rol
 
 Since script names within `package.json` vary widely between projects (e.g., some use `build`, others `compile`, others `dev`, `watch`, or `start`), the TUI maintains an explicit script role configuration in `./.nodepirc.json`.
 
-#### 1. Interactive Script Selection & Prompting
+#### 1. AI-Driven Script Inference & Fallback Prompting
 
-- **Trigger Condition**: When a project is selected (either the target workspace or an added dependency), if its script configurations are missing in `.nodepirc.json`, the TUI **must intercept the flow** and show interactive script selectors.
-- **UI Behavior**:
-  - The TUI parses the `"scripts"` object from the package's `package.json` file.
-  - For each script type associated with the active role, the TUI displays a vertical selection menu listing all found script names, plus a `[Skip / None]` option for optional scripts.
-  - The user navigates with Up/Down arrow keys and selects with `Enter`.
-  - The configured script mappings are immediately saved to `./.nodepirc.json`.
+- **Trigger Condition**: When a project is selected (either the target workspace or an added dependency), if its script configurations are missing in `.nodepirc.json`, the TUI **must intercept the flow** and attempt to resolve them automatically using the **Agy** AI integration.
+- **Agy Behavior**:
+  - The TUI executes `agy --model gemini-1.5-flash ...` passing the `package.json` to extract the correct `dev`, `build`, and `watch` scripts without user intervention.
+  - The inferred scripts are instantly saved to `./.nodepirc.json`.
+- **Fallback Interactive Selector**:
+  - If the Agy execution fails or the AI is unable to infer the correct scripts, the TUI gracefully falls back to an interactive modal.
+  - The fallback parses the `"scripts"` object from the `package.json` file and displays a vertical selection menu for the user to pick scripts manually.
   - Users can reconfigure these scripts at any time by pressing **`[c]`** (Config) when focusing the package.
 
 #### 2. Target App Script Configuration (Workspace Role)
