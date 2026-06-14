@@ -57,6 +57,24 @@ The TUI is structured into the following panels:
 
 ---
 
+## 🔨 Installation & Build
+
+`nodepi` is built as a **Single Executable Application (SEA)** natively compiled for macOS and Linux.
+
+To build and install the binary globally on your system:
+
+```bash
+# 1. Build the binary for your architecture (bundles with esbuild and Node SEA)
+pnpm run build-bin
+
+# 2. Install it globally (copies to ~/.local/bin/nodepi)
+pnpm run install-bin
+```
+
+Once installed, you can simply run `nodepi` from any project directory.
+
+---
+
 ## 📦 Configuration
 
 - **Workspace Config**: Local `./.nodepirc.json` (can be committed to the target's Git repository to share configurations with other developers).

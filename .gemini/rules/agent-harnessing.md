@@ -9,6 +9,7 @@ Defines the safe operational boundaries, package manager, and artifact usage for
 - **Language**: Respond in the language in which the user starts the conversation (Spanish by default). Documentation, code comments, and variable/function names must ALWAYS be written in **English**.
 - **Package Manager**:
   - **MANDATORY**: Exclusively use `pnpm` for any dependency installation or script execution (e.g., `pnpm add`, `pnpm dev`). NEVER use `npm` or `yarn`.
+  - **MANDATORY**: Before installing any new dependency, you MUST ALWAYS query its documentation using the `context7` MCP tools (`resolve-library-id` and `query-docs`) to ensure you are following the latest best practices and configuration.
 - **Environment**:
   - The project natively targets **macOS and Linux**. Do not apply Windows-specific path conversions or logic unless explicitly requested.
 - **Shell Safety**:

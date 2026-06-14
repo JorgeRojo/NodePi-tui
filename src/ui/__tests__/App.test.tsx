@@ -2,7 +2,7 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'ink-testing-library';
 
-import { App } from '../ui/App.js';
+import { App } from '../App.js';
 
 describe('App Component', (): void => {
   afterEach((): void => {

@@ -4,3 +4,4 @@ dist/
 *.tgz
 .eslintcache
 .DS_Stores
+bin/
