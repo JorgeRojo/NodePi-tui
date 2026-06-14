@@ -21,42 +21,43 @@
 
 The TUI is structured into the following panels:
 
-*   **Header**: Fixed top bar displaying the application name and version: `NodePi v00.00.00`.
-*   **Main Area (Left)**:
-    *   **Target Panel**: Active target project details and selected development script.
-    *   **Dependencies Panel**: Interactive dependency list (`[t]` toggle status, `[m]` toggle mode, `[x]` remove).
-    *   **Console Logs Panel**: Real-time stdout/stderr streams from compilers, `rsync`, and Vite dev server, featuring mouse-scroll support.
-*   **Fixed Sidebar (Right)**: Static side panel (no scroll) displaying:
-    *   **Active Processes**: List of all parallel running subprocesses (dev server, rsync watches, dependency compilers) and their PIDs. If none are active, it shows "Idle".
+- **Header**: Fixed top bar displaying the application name and version (e.g., `NodePi v1.0.0`).
+- **Main Area (Left)**:
+  - **Target Panel**: Active target project details and selected development script.
+  - **Dependencies Panel**: Interactive dependency list (`[t]` toggle status, `[m]` toggle mode, `[x]` remove).
+  - **Console Logs Panel**: Real-time stdout/stderr streams from compilers, `rsync`, and Vite dev server, featuring mouse-scroll support.
+- **Fixed Sidebar (Right)**: Static side panel (no scroll) displaying:
+  - **Active Processes**: List of all parallel running subprocesses (dev server, rsync watches, dependency compilers) and their PIDs. If none are active, it shows "Idle".
 
-    *   **Dependency Timeline**: Vertical, inverted timeline displaying the target project at the top, fed by dependencies from the bottom:
-        ```text
-        ■ mi-app (Target CWD)
-        ▲
-        │  v2.1.0
-        ● lib-b (Sincronización)
-        ▲
-        │  v1.0.2
-        ● lib-a (Inyección)
-        ```
-    *   **Container Directories**: Configured global search paths (e.g., `~/projects`).
-*   **Footer**:
-    *   **Status Bar (Fixed)**: Bottom bar displaying the target CWD (formatted with `~/`) and active Git branch.
-    *   **Command Bar**: Quick keyboard shortcuts (`[r]` Run, `[f]` Force Run, `[s]` Stop, `[a]` Add, `[c]` Config, `[q]` Quit).
+  - **Dependency Timeline**: Vertical, inverted timeline displaying the target project at the top, fed by dependencies from the bottom:
+    ```text
+    ■ mi-app (Target CWD)
+    ▲
+    │  v2.0.0
+    ● lib-b (Inject)
+    ▲
+    │  v1.0.2
+    ● lib-a (Sync)
+    ```
+  - **Container Directories**: Configured global search paths (e.g., `~/projects`).
+
+- **Footer**:
+  - **Status Bar (Fixed)**: Bottom bar displaying the target CWD (formatted with `~/`) and active Git branch.
+  - **Command Bar**: Quick keyboard shortcuts (`[r]` Run, `[f]` Force Run, `[s]` Stop, `[a]` Add Dep, `[c]` Config, `[q]` Quit).
 
 ---
 
 ## 🛠️ Technology Stack
 
-*   **Environment**: Node.js (>= 20.11.0), macOS and Linux natively (bash and zsh).
-*   **Language**: TypeScript compiled to ESM.
-*   **TUI Engine**: **React + Ink** (using Yoga Flexbox engine for responsive panel distribution).
-*   **Package Manager**: `pnpm` exclusively.
-*   **Sync Utility**: Native `rsync` processes and file integrity checking using `shasum`.
+- **Environment**: Node.js (>= 20.11.0), macOS and Linux natively (bash and zsh).
+- **Language**: TypeScript compiled to ESM.
+- **TUI Engine**: **React + Ink** (using Yoga Flexbox engine for responsive panel distribution).
+- **Package Manager**: `pnpm` exclusively.
+- **Sync Utility**: Native `rsync` processes orchestrated via `execa`, with file change detection powered by `chokidar` and integrity hashing via Node.js native `crypto` module.
 
 ---
 
 ## 📦 Configuration
 
-*   **Workspace Config**: Local `./.nodepirc.json` (can be committed to the target's Git repository to share configurations with other developers).
-*   **Global Config**: Global `~/.nodepirc.json` (contains the base search directories located under the user's home folder `~/`).
+- **Workspace Config**: Local `./.nodepirc.json` (can be committed to the target's Git repository to share configurations with other developers).
+- **Global Config**: Global `~/.nodepirc.json` (contains the base search directories located under the user's home folder `~/`).
