@@ -54,13 +54,7 @@ To guarantee workspace stability and prevent leaving corrupted dependencies in `
 
 ### Startup Checks & Validations
 
-When launching `nodepi`, a strict three-step validation is executed:
-
-1.  **Step 1: System Dependencies**: Verifies availability of `node`, `rsync`, `git`, and **`pnpm`** in the PATH. File hashing uses Node.js native `crypto` module. File watching uses `chokidar`.
-2.  **Step 2: Container Directories**: Validates that at least one base search folder is configured globally (in `~/.nodepirc.json`) and located under the user's home directory (`~/`).
-3.  **Step 3: Target Project Validation (CWD)**: Statically verifies that the current folder (`process.cwd()`) contains files for a Node + Vite project (presence of `package.json` and `vite.config.ts` or variants). **No target scripts are executed in this check.**
-
-If any validation step fails, the TUI halts and renders an error screen with corrective instructions.
+For validation sequences, refer to the `.gemini/rules/cli-standards.md` configuration.
 
 ### TUI Modules Architecture
 
@@ -132,17 +126,4 @@ The interface is built with **React + Ink** and structured as follows:
 
 ## 🧪 Testing Strategy (TDD)
 
-To guarantee the reliability of the system orchestration, file manipulation, and terminal rendering, the project strictly adheres to **Test-Driven Development (TDD)** using `vitest` and `@inkjs/testing`.
-
-1. **Mandatory TDD Approach**:
-   - No implementation code can be written without a failing test first.
-   - Every utility function, state slice (Zustand), and React Ink component must have complete test coverage.
-2. **Core Logic Unit Tests**:
-   - Utilities handling `package.json` mutations, file system interactions, and dependency resolution must be tested in isolation (mocking the `fs` module when necessary).
-3. **Execution Engine Integration Tests**:
-   - The process manager (`execa` wrapper) and process termination logic (`SIGKILL`) must be tested to ensure no orphan processes remain on different OS environments.
-   - Scenarios like dependency injection failures or missing permissions must be covered.
-4. **TUI Component Rendering Tests**:
-   - UI elements and complex screens (Dashboard, Timeline, Interactive Prompts) will be tested headless using `@inkjs/testing` to verify correct output strings and ANSI behaviors without requiring an actual terminal window.
-5. **Environment Restoration**:
-   - All tests modifying the file system or environment variables must utilize the `afterEach` hook to revert changes (e.g., restoring original paths or mocks) to ensure hermetic and reproducible test runs.
+The testing strategy strictly uses Vitest and TDD. See `.gemini/rules/testing-vitest.md` for enforcement rules.

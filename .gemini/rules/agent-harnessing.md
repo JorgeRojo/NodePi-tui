@@ -17,3 +17,7 @@ Defines the safe operational boundaries, package manager, and artifact usage for
   - Asynchronous commands running in the background (`watch`, `dev`) must be carefully managed and killed using their PID or through the agent's task management tools to avoid leaving orphan processes.
 - **Artifacts**: All reports, summaries, and generated code for review must be written as "Artifacts" in the persistent directory assigned by the system. Do not reuse artifacts from previous sessions.
 - **Memory and Volatile State**: Do not store volatile data in persistent documentation. Document architectural findings in the `DOCS/` folder.
+
+## AI Automation & Script Inference
+
+- **Agy Integration**: If script configuration (e.g., build, watch, dev) is missing for a package in `.nodepirc.json`, the agent must first attempt to use the `agy --model gemini-1.5-flash` command to infer the scripts from `package.json` before prompting the user with an interactive selector.

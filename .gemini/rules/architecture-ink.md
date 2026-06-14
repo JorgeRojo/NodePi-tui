@@ -25,3 +25,15 @@ Defines architectural patterns for TUI development using React, Ink, and Zustand
   - Agnostic UI components (Buttons, Panels) -> `src/components/ui/`
   - Business logic and engines (Execa orchestrators, Chokidar watchers) -> `src/core/` or `src/services/`
   - UI components must never instantiate system processes directly; they must dispatch actions to global services provided by the core.
+
+## Process Execution & Orchestration
+
+- **Sequential vs Parallel**: Group tasks into Blocking Sequential steps (Cleanup, topological installs/builds, vite cache busting) and Non-Blocking Parallel steps (Watch compilers, Rsync watchers, Dev Server).
+- **Subprocess Management (NodePi-2 Strategy)**: To prevent zombie processes, spawn all background parallel processes (watchers, dev server) with `{ detached: true }` so they form a process group. Kill them securely using `process.kill(-pid, 'SIGKILL')`.
+- **PTY Emulation & Logging**:
+  - Wrap background commands in `script -q /dev/null` (on macOS/Linux) to enforce pseudo-terminal behavior.
+  - Inject environment variables: `FORCE_COLOR: "1"`, `COLORTERM: "truecolor"`, `TERM: "xterm-256color"`.
+  - Process carriage returns (`\r`) in the log stream by overwriting the last line of the log buffer instead of creating a new line.
+- **Responsive Layout**:
+  - Enforce a minimum window size of 80x24 columns/rows. Show a warning and pause rendering if smaller.
+  - Show Right Sidebar only if terminal width >= 100 columns. Hide it if width is between 80 and 99.

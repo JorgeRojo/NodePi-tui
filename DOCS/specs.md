@@ -99,13 +99,7 @@ All parallel processes running in the background are tracked dynamically by the 
 
 ### 1.5 Startup Checks & Validations
 
-When launching the application via `nodepi`, the TUI strictly follows these three validation steps before opening the Dashboard:
-
-1. **Step 1: System Dependencies**: Checks that `node`, `rsync`, `git`, and the package manager **`pnpm`** are available in the system PATH. File hashing is performed natively via Node.js `crypto` module (no external `shasum` binary required). File watching is handled natively via `chokidar` (no external `watch` binary required).
-2. **Step 2: Container Directories**: Verifies that at least one global base search directory is configured (in `~/.nodepirc.json`) and that all of them are located inside the user's home directory (`~/`).
-3. **Step 3: Target Project Validation (CWD)**: Statically checks that the current directory (`process.cwd()`) contains files characteristic of a Node + Vite project. Specifically, it verifies the physical existence of `package.json` and a Vite configuration file (such as `vite.config.ts`, `vite.config.js`, `vite.config.mjs`, or `vite.config.cjs`). **No project scripts or commands are executed during this validation phase.**
-
-**Failure Behavior**: If any of these three steps fail, the TUI will display an error screen with corrective instructions (e.g., command to install a missing tool, request to configure a container directory, or warning that the folder is not a Vite project) and stop execution.
+When launching the application via `nodepi`, the TUI validates system dependencies, configuration, and the CWD. For exact validation sequences and exit behaviors, refer to the `.gemini/rules/cli-standards.md` configuration.
 
 ### 1.6 Global Settings & Path Display
 
@@ -217,26 +211,9 @@ The TUI replaces all legacy shell scripts from the original Electron project wit
 
 ### 2.4 TTY/PTY Emulation & Console Output Fidelity
 
-To guarantee that outputs from subprocesses (such as the Vite development server, `tsc` compilation errors, or `pnpm` warnings) are rendered in the Console Logs Panel exactly as they would look in a standalone terminal execution, the TUI implements PTY emulation and high-fidelity output parsing:
+To guarantee that outputs from subprocesses are rendered exactly as they would in a standard terminal, the TUI implements PTY emulation, forced color environments, and carriage return (`\r`) handling.
 
-1. **Pseudo-Terminal (PTY) Simulation**:
-   - When spawning background processes (watch compilers, dev servers, sync processes) using Node's `child_process.spawn`, the TUI does not connect stdout/stderr directly to standard pipes, which would cause the child processes to disable color output.
-   - Instead, on macOS and Linux, the command is wrapped and executed inside a native pseudo-terminal allocator using the Unix `script -q /dev/null` utility.
-   - Example wrapper command structure: `script -q /dev/null <command-with-args>`
-   - This forces the spawned tool to detect a PTY connection, preserving interactive features, formatted spinners, and layout structures.
-
-2. **Forced Color Environment**:
-   - The TUI injects specific environment variables into all spawned subprocesses to enforce colored output:
-     - `FORCE_COLOR: "1"`
-     - `COLORTERM: "truecolor"`
-     - `TERM: "xterm-256color"`
-
-3. **Carriage Return (`\r`) & Backspace Interpretation**:
-   - Modern CLI tools make heavy use of carriage returns (`\r`) to clear and update lines in-place (e.g. download progress bars, active compilation spinners).
-   - Rather than treating `\r` as a newline separator (which would cause the log viewer to print thousands of duplicate progress lines), the TUI's stream parser processes carriage returns by overwriting the current active line in the logs buffer.
-
-4. **ANSI Escape Code Rendering**:
-   - The Console Logs Panel preserves all ANSI escape codes and colors. Ink parses and displays these styles natively using Chalk, ensuring warning text is printed in yellow, errors in red, and paths or tags in their respective colors.
+For implementation rules regarding `script -q /dev/null`, environment variables, and stream parsing, refer to `.gemini/rules/architecture-ink.md`.
 
 ---
 
@@ -278,13 +255,11 @@ The TUI is distributed in a structured layout as follows:
 
 ### 3.2 Terminal Dimensions & Adaptability (Inspired by OpenCode)
 
-To ensure optimal rendering in any development environment (such as integrated VS Code terminals or multiplexers like `tmux`), the NodePi TUI implements the following adaptability rules:
+To ensure optimal rendering in any development environment (such as integrated VS Code terminals or multiplexers like `tmux`), the NodePi TUI implements adaptable layouts.
 
-1. **Minimum Dimensions**: The terminal window must have a minimum size of **80 columns by 24 rows**. If dimensions are smaller upon startup or during live resizing, the TUI will temporarily suspend the dashboard and render a clean warning: _"Please enlarge your terminal window (Minimum 80x24)"_.
-2. **Responsive Layout**:
-   - **Wide Terminals (>= 100 columns)**: Renders the two-column side-by-side view (Main Area on the left and Fixed Sidebar on the right).
-   - **Narrow Terminals (80 to 99 columns)**: The Sidebar is automatically hidden to prioritize space for the Console Logs and the Dependencies list in the Main Area.
-3. **Visual Aesthetics**: Uses a clean color palette (similar to Catppuccin/Nord) based on greys, blue accents for focus, green for enabled dependencies, red/orange for errors/warnings, and discrete dark backgrounds, ensuring premium terminal aesthetics and readability.
+For precise minimum column requirements and responsive hiding rules, refer to `.gemini/rules/architecture-ink.md`.
+
+- **Visual Aesthetics**: Uses a clean color palette (similar to Catppuccin/Nord) based on greys, blue accents for focus, green for enabled dependencies, red/orange for errors/warnings, and discrete dark backgrounds, ensuring premium terminal aesthetics and readability.
 
 ### 3.3 Detailed UI/UX Layout Specifications
 

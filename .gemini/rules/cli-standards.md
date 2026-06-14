@@ -25,3 +25,12 @@ Every entrypoint that acts as an executable must support:
 
 - **Graceful degradation**: Standard errors and preflight checks must print via `console.error` and exit _before_ mounting Ink, avoiding UI corruption.
 - When `cwd` is supplied, change the directory natively (`process.chdir`) immediately after parsing, so that downstream modules implicitly operate on the specified target.
+
+## Startup & Lifecycle Management
+
+- **Startup Validation**: Before loading the TUI, execute static checks:
+  1. System Dependencies: `node`, `rsync`, `git`, `pnpm` exist in PATH. Native `crypto` and `chokidar` are available.
+  2. Container Directory: Global search path configured in `~/.nodepirc.json`.
+  3. CWD Validation: Current directory contains `package.json` and `vite.config.*` (statically checked without executing scripts).
+- **Path Formatting**: Never display absolute paths. Replace the user's home directory prefix with `~/` across the UI (Dashboard, logs, settings).
+- **Instant Exit Protocol**: Trap exit signals (`SIGINT`, `SIGTERM`). Synchronously restore `package.json`, `pnpm-lock.yaml`, and `node_modules` from their backups (`.nodepi-backup`) without running `pnpm install` during exit.
