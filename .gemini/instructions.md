@@ -4,6 +4,13 @@ This document serves as the master index for the rules and conventions adapted f
 
 To optimize context window and follow the lazy loading architecture, you must **NOT** guess the rules. Instead, you MUST use the `view_file` tool to read the specific rule file corresponding to your current task BEFORE executing any action in that domain.
 
+## Global Tool Usage Rule
+
+**CRITICAL INSTRUCTION**: You must ALWAYS prioritize using the most specific native tool available for the task at hand (e.g., `view_file`, `write_to_file`, `replace_file_content`, `grep_search`, `list_dir`) over executing generic bash commands via `run_command`.
+
+- **NEVER** use commands like `cat`, `echo >`, `ls`, `grep`, or `sed` within a bash command.
+- Only use `run_command` when there is no native tool available for the specific task (like running compilers, tests, or executing scripts).
+
 ## Lazy Loading Index
 
 | When to load                                                                   | File to read                          |
