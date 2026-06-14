@@ -7,7 +7,7 @@ Based on the specifications, UI design, and implementation plan, the entire proj
 | **PRD-01** | **Boilerplate & Testing**              | Base setup: ESM/NodeNext, Vitest + Ink testing, `pnpm` scripts, and directory scaffolding (`src/core`, `src/ui`, etc).                 | ✅ DONE    |
 | **PRD-02** | **Startup Validations**                | The strict 3-step validation engine (binaries check, container paths, valid Vite project).                                             | ✅ DONE    |
 | **PRD-03** | **Config Manager & Auto-Discovery**    | Read/write `.nodepirc.json`, fuzzy search `fast-glob`, and topological dependency graph sorting.                                       | ✅ DONE    |
-| **PRD-04** | **Execution Engine Core**              | `execa` wrappers, PTY emulation for colored output, process group tracking (`-pid` SIGKILL), and log stream parsing.                   | ⚪ PENDING |
+| **PRD-04** | **Execution Engine Core**              | `execa` wrappers, PTY emulation for colored output, process group tracking (`-pid` SIGKILL), and log stream parsing.                   | ✅ DONE    |
 | **PRD-05** | **State Management & Base TUI Layout** | Zustand slices setup. Ink layout (Yoga Flexbox) with Target, Dependencies, Sidebar, and Console panels. Responsive resize events.      | ⚪ PENDING |
 | **PRD-06** | **TUI Interactivity & Modals**         | Keyboard hooks (`[a]`, `[m]`, `[x]`), interactive `@inkjs/ui` Selectors for scripts, and dynamic mode toggling.                        | ⚪ PENDING |
 | **PRD-07** | **Custom Scripts Engine**              | Support for defining custom scripts in `.nodepirc.json` (type, name, terminal command) to override or augment `package.json` defaults. | ⚪ PENDING |
