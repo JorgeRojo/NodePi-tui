@@ -1,7 +1,7 @@
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
 import chalk from 'chalk';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
 
 export const validateConfig = async (): Promise<void> => {
   const homeDir = os.homedir();
@@ -17,7 +17,9 @@ export const validateConfig = async (): Promise<void> => {
   try {
     fileContent = await fs.readFile(configPath, 'utf-8');
   } catch (error) {
-    throw new Error(chalk.red(`Failed to read configuration: ${configPath}`));
+    throw new Error(chalk.red(`Failed to read configuration: ${configPath}`), {
+      cause: error,
+    });
   }
 
   let config: unknown;
@@ -28,27 +30,35 @@ export const validateConfig = async (): Promise<void> => {
   }
 
   if (!config || typeof config !== 'object') {
-    throw new Error(chalk.red(`Invalid configuration structure in ${configPath}`));
+    throw new Error(
+      chalk.red(`Invalid configuration structure in ${configPath}`)
+    );
   }
 
   const { containers } = config as { containers?: unknown };
 
   if (!Array.isArray(containers) || containers.length === 0) {
-    throw new Error(chalk.red(`Configuration must contain a non-empty 'containers' array`));
+    throw new Error(
+      chalk.red(`Configuration must contain a non-empty 'containers' array`)
+    );
   }
 
   for (const containerPath of containers) {
     if (typeof containerPath !== 'string') {
       throw new Error(chalk.red(`Container paths must be strings`));
     }
-    
+
     // Resolve ~ to home dir
     const resolvedPath = containerPath.startsWith('~/')
       ? path.join(homeDir, containerPath.slice(2))
       : path.resolve(containerPath);
 
     if (!resolvedPath.startsWith(homeDir)) {
-      throw new Error(chalk.red(`Container path must resolve under home directory (~/): ${containerPath}`));
+      throw new Error(
+        chalk.red(
+          `Container path must resolve under home directory (~/): ${containerPath}`
+        )
+      );
     }
   }
 };

@@ -1,5 +1,5 @@
-import { execa } from 'execa';
 import chalk from 'chalk';
+import { execa } from 'execa';
 
 export const validateSystem = async (): Promise<void> => {
   const tools = ['pnpm', 'rsync', 'git'];

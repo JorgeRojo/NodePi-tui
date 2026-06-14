@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { validateConfig } from '../configValidator.js';
 import { runPreflightValidations } from '../index.js';
 import { validateSystem } from '../systemValidator.js';
-import { validateConfig } from '../configValidator.js';
 import { validateTarget } from '../targetValidator.js';
 
 vi.mock('../systemValidator.js', () => ({
@@ -33,7 +34,9 @@ describe('runPreflightValidations', () => {
     const error = new Error('System validation failed');
     vi.mocked(validateSystem).mockRejectedValueOnce(error);
 
-    await expect(runPreflightValidations()).rejects.toThrow('System validation failed');
+    await expect(runPreflightValidations()).rejects.toThrow(
+      'System validation failed'
+    );
 
     expect(validateSystem).toHaveBeenCalledTimes(1);
     expect(validateConfig).not.toHaveBeenCalled();
@@ -44,7 +47,9 @@ describe('runPreflightValidations', () => {
     const error = new Error('Config validation failed');
     vi.mocked(validateConfig).mockRejectedValueOnce(error);
 
-    await expect(runPreflightValidations()).rejects.toThrow('Config validation failed');
+    await expect(runPreflightValidations()).rejects.toThrow(
+      'Config validation failed'
+    );
 
     expect(validateSystem).toHaveBeenCalledTimes(1);
     expect(validateConfig).toHaveBeenCalledTimes(1);
@@ -55,7 +60,9 @@ describe('runPreflightValidations', () => {
     const error = new Error('Target validation failed');
     vi.mocked(validateTarget).mockRejectedValueOnce(error);
 
-    await expect(runPreflightValidations()).rejects.toThrow('Target validation failed');
+    await expect(runPreflightValidations()).rejects.toThrow(
+      'Target validation failed'
+    );
 
     expect(validateSystem).toHaveBeenCalledTimes(1);
     expect(validateConfig).toHaveBeenCalledTimes(1);

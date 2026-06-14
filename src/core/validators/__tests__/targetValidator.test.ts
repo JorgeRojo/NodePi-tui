@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import * as fs from 'fs/promises';
-import { validateTarget } from '../targetValidator.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import chalk from 'chalk';
+import * as fs from 'fs/promises';
 import path from 'path';
+
+import { validateTarget } from '../targetValidator.js';
 
 vi.mock('fs/promises');
 
@@ -17,14 +18,18 @@ describe('validateTarget', () => {
 
     await expect(validateTarget()).resolves.toBeUndefined();
     // It should check package.json and then vite.config.ts or vite.config.js
-    expect(fs.access).toHaveBeenCalledWith(path.join(process.cwd(), 'package.json'));
+    expect(fs.access).toHaveBeenCalledWith(
+      path.join(process.cwd(), 'package.json')
+    );
   });
 
   it('should throw an error if package.json is missing', async () => {
     // Rejects on the first call (package.json)
     vi.mocked(fs.access).mockRejectedValueOnce(new Error('ENOENT'));
 
-    await expect(validateTarget()).rejects.toThrow(chalk.red('Not a valid Vite project.'));
+    await expect(validateTarget()).rejects.toThrow(
+      chalk.red('Not a valid Vite project.')
+    );
   });
 
   it('should throw an error if vite config is missing', async () => {
@@ -34,7 +39,9 @@ describe('validateTarget', () => {
       .mockRejectedValueOnce(new Error('ENOENT')) // vite.config.ts
       .mockRejectedValueOnce(new Error('ENOENT')); // vite.config.js
 
-    await expect(validateTarget()).rejects.toThrow(chalk.red('Not a valid Vite project.'));
+    await expect(validateTarget()).rejects.toThrow(
+      chalk.red('Not a valid Vite project.')
+    );
   });
 
   it('should resolve if package.json and vite.config.js are present but vite.config.ts is missing', async () => {

@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { validateConfig } from '../configValidator.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import chalk from 'chalk';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import chalk from 'chalk';
+
+import { validateConfig } from '../configValidator.js';
 
 vi.mock('fs/promises');
 vi.mock('os');
@@ -68,7 +69,9 @@ describe('validateConfig', () => {
   it('throws if containers array is empty', async () => {
     vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ containers: [] }));
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({ containers: [] })
+    );
 
     await expect(validateConfig()).rejects.toThrowError(
       chalk.red(`Configuration must contain a non-empty 'containers' array`)
@@ -78,7 +81,9 @@ describe('validateConfig', () => {
   it('throws if container path is not a string', async () => {
     vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ containers: [123] }));
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({ containers: [123] })
+    );
 
     await expect(validateConfig()).rejects.toThrowError(
       chalk.red(`Container paths must be strings`)
@@ -88,17 +93,23 @@ describe('validateConfig', () => {
   it('throws if container path does not resolve under home directory', async () => {
     vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ containers: ['/var/www/html'] }));
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({ containers: ['/var/www/html'] })
+    );
 
     await expect(validateConfig()).rejects.toThrowError(
-      chalk.red(`Container path must resolve under home directory (~/): /var/www/html`)
+      chalk.red(
+        `Container path must resolve under home directory (~/): /var/www/html`
+      )
     );
   });
 
   it('resolves successfully for valid configuration with absolute path', async () => {
     vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ containers: [`${mockHomeDir}/projects/app`] }));
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({ containers: [`${mockHomeDir}/projects/app`] })
+    );
 
     await expect(validateConfig()).resolves.toBeUndefined();
   });
@@ -106,7 +117,9 @@ describe('validateConfig', () => {
   it('resolves successfully for valid configuration with ~ path', async () => {
     vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ containers: ['~/projects/app'] }));
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({ containers: ['~/projects/app'] })
+    );
 
     await expect(validateConfig()).resolves.toBeUndefined();
   });
