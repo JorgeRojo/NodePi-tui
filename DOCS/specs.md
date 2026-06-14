@@ -289,4 +289,4 @@ To ensure optimal rendering in any development environment (such as integrated V
 
 ### 3.3 Detailed UI/UX Layout Specifications
 
-For a complete visual breakdown of all screens (Startup, Dashboard, Script Selection, and Dependency Discovery), color schemas, responsive grid columns, and keyboard/focus interaction rings, see [ui_design.md](file:///Users/jorge/projects/NodePi-tui/DOCS/ui_design.md).
+For a complete visual breakdown of all screens (Startup, Dashboard, Script Selection, and Dependency Discovery), color schemas, responsive grid columns, and keyboard/focus interaction rings, see [ui_design.md](./ui_design.md).

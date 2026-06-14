@@ -2,7 +2,7 @@
 
 ## Overview
 
-PRD: `/Users/jorge/projects/NodePi-tui/DOCS/TASKS/PRD-01-Boilerplate.md`
+PRD: `./DOCS/TASKS/PRD-01-Boilerplate.md`
 This task focuses on configuring the foundational ESM/TypeScript setup for the NodePi TUI project. It will involve establishing the entry point scripts, creating a base React/Ink component for rendering, and configuring the Vitest framework to ensure tests pass in a headless TUI environment, applying all the workspace rules.
 
 ## 🔍 Codebase Analysis
