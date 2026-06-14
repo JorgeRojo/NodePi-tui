@@ -56,4 +56,19 @@ mkdir -p "$INSTALL_DIR"
 cp "$BIN_PATH" "$INSTALL_DIR/$COMMAND_NAME"
 chmod +x "$INSTALL_DIR/$COMMAND_NAME"
 
+# ==========================================
+# 4. INITIALIZE DEFAULT CONFIGURATION
+# ==========================================
+CONFIG_FILE="$HOME/.nodepirc.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Initializing default configuration at $CONFIG_FILE..."
+  cat << 'EOF' > "$CONFIG_FILE"
+{
+  "containers": [
+    "~/projects"
+  ]
+}
+EOF
+fi
+
 echo "Installation complete. The '$COMMAND_NAME' command is ready to use."
