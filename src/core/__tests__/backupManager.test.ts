@@ -128,11 +128,11 @@ describe('Backup Manager', () => {
       const mockReaddirSync = vi.mocked(fsSync.readdirSync) as MockedFunction<
         typeof fsSync.readdirSync
       >;
-      mockReaddirSync.mockImplementation((dir: any) => {
+      mockReaddirSync.mockImplementation((dir: unknown) => {
         if (dir === path.join(mockBackupDir, 'node_modules')) {
-          return ['dep-a', '@scope'] as any;
+          return ['dep-a', '@scope'] as never;
         }
-        return [];
+        return [] as never;
       });
 
       const mockCpSync = vi.mocked(fsSync.cpSync);
@@ -179,7 +179,7 @@ describe('Backup Manager', () => {
         typeof fsSync.readdirSync
       >;
       mockReaddirSync.mockImplementation(() => {
-        return ['dep-a'] as any;
+        return ['dep-a'] as never;
       });
 
       const mockCpSync = vi.mocked(fsSync.cpSync);
