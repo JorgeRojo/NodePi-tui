@@ -81,6 +81,46 @@ describe('ProcessManager', () => {
     expect(Object.keys(state.processes).length).toBe(0);
   });
 
+  it('should spawn a shell process and add it to the store', () => {
+    processManager.spawnShellProcess(
+      'custom-build',
+      'npm run build && echo "done"',
+      'dev'
+    );
+
+    expect(execa).toHaveBeenCalledWith(
+      'script',
+      ['-q', '/dev/null', 'sh', '-c', 'npm run build && echo "done"'],
+      {
+        detached: true,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: {
+          FORCE_COLOR: '1',
+          COLORTERM: 'truecolor',
+          TERM: 'xterm-256color',
+        },
+      }
+    );
+
+    const state = processStore.getState();
+    expect(state.processes[12345]).toEqual({
+      pid: 12345,
+      type: 'dev',
+      status: 'running',
+      command: 'custom-build',
+      logs: [],
+    });
+  });
+
+  it('should not add shell process to store if pid is undefined', () => {
+    childProcessMock.pid = undefined;
+    processManager.spawnShellProcess('custom', 'echo 1', 'dev');
+
+    const state = processStore.getState();
+    expect(Object.keys(state.processes).length).toBe(0);
+  });
+
   it('should append logs to the store when stdout emits data', () => {
     processManager.spawnProcess('echo', ['hello'], 'dev');
 

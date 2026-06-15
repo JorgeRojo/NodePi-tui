@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import type { NodePiConfig } from './types.js';
+import type { CustomScript, NodePiConfig } from './types.js';
 
 const CONFIG_FILENAME = '.nodepirc.json';
 
@@ -15,7 +15,7 @@ export const writeConfig = async (
 
 export const readConfig = async (basePath: string): Promise<NodePiConfig> => {
   const configPath = path.join(basePath, CONFIG_FILENAME);
-  const defaultTemplate: NodePiConfig = { containers: [] };
+  const defaultTemplate: NodePiConfig = { containers: [], customScripts: [] };
 
   try {
     const content = await fs.readFile(configPath, 'utf-8');
@@ -25,7 +25,10 @@ export const readConfig = async (basePath: string): Promise<NodePiConfig> => {
       return defaultTemplate;
     }
 
-    const { containers, dependencies } = parsed as Record<string, unknown>;
+    const { containers, dependencies, customScripts } = parsed as Record<
+      string,
+      unknown
+    >;
 
     if (!Array.isArray(containers)) {
       return defaultTemplate;
@@ -40,7 +43,25 @@ export const readConfig = async (basePath: string): Promise<NodePiConfig> => {
         ? (dependencies as NodePiConfig['dependencies'])
         : undefined;
 
-    return { containers: validContainers, dependencies: validDependencies };
+    const validCustomScripts = Array.isArray(customScripts)
+      ? customScripts.filter(
+          (s: unknown): s is CustomScript =>
+            typeof s === 'object' &&
+            s !== null &&
+            'type' in s &&
+            typeof (s as Record<string, unknown>).type === 'string' &&
+            'name' in s &&
+            typeof (s as Record<string, unknown>).name === 'string' &&
+            'command' in s &&
+            typeof (s as Record<string, unknown>).command === 'string'
+        )
+      : [];
+
+    return {
+      containers: validContainers,
+      dependencies: validDependencies,
+      customScripts: validCustomScripts,
+    };
   } catch (error: unknown) {
     if (
       error instanceof Error &&

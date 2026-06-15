@@ -45,6 +45,9 @@ export const DependencyList = (): React.JSX.Element => {
     if (input === 'c') {
       setActiveModal('config');
     }
+    if (input === 'S') {
+      setActiveModal('scripts');
+    }
   });
 
   return (
@@ -60,19 +63,37 @@ export const DependencyList = (): React.JSX.Element => {
       </Box>
       {dependencies.map((dep, idx) => (
         <Box key={idx}>
-          <Text color={idx === focusedDependencyIndex ? 'blueBright' : (dep.enabled ? undefined : 'gray')}>
+          <Text
+            color={
+              idx === focusedDependencyIndex
+                ? 'blueBright'
+                : dep.enabled
+                  ? undefined
+                  : 'gray'
+            }
+          >
             {idx === focusedDependencyIndex ? '▶ ' : '  '}[
             {dep.enabled ? (
-              <Text color={idx === focusedDependencyIndex ? 'greenBright' : 'green'}>Enabled</Text>
+              <Text
+                color={idx === focusedDependencyIndex ? 'greenBright' : 'green'}
+              >
+                Enabled
+              </Text>
             ) : (
               <Text color="gray">Disabled</Text>
             )}
-            ] {dep.name} <Text dimColor>({dep.type}) {dep.version}</Text> {dep.path}
+            ] {dep.name}{' '}
+            <Text dimColor>
+              ({dep.type}) {dep.version}
+            </Text>{' '}
+            {dep.path}
           </Text>
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text color="gray">[a] Add Dep [t] Toggle [m] Mode [x] Del</Text>
+        <Text color="gray">
+          [a] Add Dep [t] Toggle [m] Mode [x] Del [S] Scripts
+        </Text>
       </Box>
     </Box>
   );

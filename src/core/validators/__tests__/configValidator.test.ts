@@ -123,4 +123,63 @@ describe('validateConfig', () => {
 
     await expect(validateConfig()).resolves.toBeUndefined();
   });
+
+  it('throws if customScripts is not an array', async () => {
+    vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({ containers: ['~/projects/app'], customScripts: {} })
+    );
+
+    await expect(validateConfig()).rejects.toThrowError(
+      chalk.red(`'customScripts' must be an array if provided`)
+    );
+  });
+
+  it('throws if custom script is not an object', async () => {
+    vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        containers: ['~/projects/app'],
+        customScripts: ['invalid'],
+      })
+    );
+
+    await expect(validateConfig()).rejects.toThrowError(
+      chalk.red(`Each custom script must be an object`)
+    );
+  });
+
+  it('throws if custom script is missing required fields or has wrong types', async () => {
+    vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        containers: ['~/projects/app'],
+        customScripts: [{ name: 'test', command: 'echo test' }], // missing type
+      })
+    );
+
+    await expect(validateConfig()).rejects.toThrowError(
+      chalk.red(
+        `Custom script must contain 'type', 'name', and 'command' as strings`
+      )
+    );
+  });
+
+  it('resolves successfully for valid configuration with customScripts', async () => {
+    vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        containers: ['~/projects/app'],
+        customScripts: [
+          { type: 'build', name: 'My Build', command: 'pnpm build' },
+        ],
+      })
+    );
+
+    await expect(validateConfig()).resolves.toBeUndefined();
+  });
 });

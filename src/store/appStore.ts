@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { writeConfig } from '../core/config-manager/io.js';
+import type { CustomScript } from '../core/config-manager/types.js';
 
 export interface Dependency {
   name: string;
@@ -42,9 +43,10 @@ export interface AppState {
   timeline: TimelineEvent[];
   logs: LogEntry[];
   containerDirs: string[];
+  customScripts: CustomScript[];
 
   focusedDependencyIndex: number;
-  activeModal: 'none' | 'add' | 'config';
+  activeModal: 'none' | 'add' | 'config' | 'scripts';
 
   // Actions
   setTarget: (target: Partial<AppState['target']>) => void;
@@ -53,10 +55,11 @@ export interface AppState {
   setTimeline: (timeline: TimelineEvent[]) => void;
   addLog: (log: LogEntry) => void;
   setFocusedDependencyIndex: (index: number) => void;
-  setActiveModal: (modal: 'none' | 'add' | 'config') => void;
+  setActiveModal: (modal: 'none' | 'add' | 'config' | 'scripts') => void;
   toggleDependency: (name: string) => void;
   toggleDependencyMode: (name: string) => void;
   removeDependency: (name: string) => void;
+  addCustomScript: (script: CustomScript) => void;
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -107,6 +110,7 @@ export const useAppStore = create<AppState>(set => ({
     },
   ],
   containerDirs: ['~/projects'],
+  customScripts: [],
   focusedDependencyIndex: 0,
   activeModal: 'none',
 
@@ -127,7 +131,10 @@ export const useAppStore = create<AppState>(set => ({
       const dependencies = state.dependencies.map(dep =>
         dep.name === name ? { ...dep, enabled: !dep.enabled } : dep
       );
-      const depsRecord: Record<string, any> = {};
+      const depsRecord: Record<
+        string,
+        { type: string; enabled: boolean; version?: string; path?: string }
+      > = {};
       dependencies.forEach(d => {
         depsRecord[d.name] = {
           type: d.type,
@@ -149,7 +156,10 @@ export const useAppStore = create<AppState>(set => ({
           ? { ...dep, type: dep.type === 'Sync' ? 'Inject' : 'Sync' }
           : dep
       );
-      const depsRecord: Record<string, any> = {};
+      const depsRecord: Record<
+        string,
+        { type: string; enabled: boolean; version?: string; path?: string }
+      > = {};
       dependencies.forEach(d => {
         depsRecord[d.name] = {
           type: d.type,
@@ -167,7 +177,10 @@ export const useAppStore = create<AppState>(set => ({
   removeDependency: (name): void =>
     set((state): Partial<AppState> => {
       const dependencies = state.dependencies.filter(dep => dep.name !== name);
-      const depsRecord: Record<string, any> = {};
+      const depsRecord: Record<
+        string,
+        { type: string; enabled: boolean; version?: string; path?: string }
+      > = {};
       dependencies.forEach(d => {
         depsRecord[d.name] = {
           type: d.type,
@@ -187,6 +200,31 @@ export const useAppStore = create<AppState>(set => ({
           Math.min(state.focusedDependencyIndex, dependencies.length - 1)
         ),
       };
+    }),
+  addCustomScript: (script): void =>
+    set((state): Partial<AppState> => {
+      const customScripts = [...state.customScripts, script];
+
+      const depsRecord: Record<
+        string,
+        { type: string; enabled: boolean; version?: string; path?: string }
+      > = {};
+      state.dependencies.forEach(d => {
+        depsRecord[d.name] = {
+          type: d.type,
+          enabled: d.enabled,
+          version: d.version,
+          path: d.path,
+        };
+      });
+
+      void writeConfig(state.target.cwd, {
+        containers: state.containerDirs,
+        dependencies: depsRecord,
+        customScripts,
+      });
+
+      return { customScripts };
     }),
 }));
 

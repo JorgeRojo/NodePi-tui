@@ -61,4 +61,33 @@ export const validateConfig = async (): Promise<void> => {
       );
     }
   }
+
+  const { customScripts } = config as { customScripts?: unknown };
+
+  if (customScripts !== undefined) {
+    if (!Array.isArray(customScripts)) {
+      throw new Error(
+        chalk.red(`'customScripts' must be an array if provided`)
+      );
+    }
+
+    for (const script of customScripts) {
+      if (!script || typeof script !== 'object') {
+        throw new Error(chalk.red(`Each custom script must be an object`));
+      }
+
+      const s = script as Record<string, unknown>;
+      if (
+        typeof s.type !== 'string' ||
+        typeof s.name !== 'string' ||
+        typeof s.command !== 'string'
+      ) {
+        throw new Error(
+          chalk.red(
+            `Custom script must contain 'type', 'name', and 'command' as strings`
+          )
+        );
+      }
+    }
+  }
 };

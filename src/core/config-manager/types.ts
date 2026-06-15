@@ -1,9 +1,16 @@
+export interface CustomScript {
+  type: string;
+  name: string;
+  command: string;
+}
+
 export interface NodePiConfig {
   containers: string[];
   dependencies?: Record<
     string,
     { type: string; enabled: boolean; version?: string; path?: string }
   >;
+  customScripts?: CustomScript[];
 }
 
 export interface PackageMetadata {

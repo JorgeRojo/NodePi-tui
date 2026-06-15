@@ -8,6 +8,7 @@ import { DependencyList } from './components/DependencyList.js';
 import { Footer } from './components/Footer.js';
 import { Header } from './components/Header.js';
 import { LogsPanel } from './components/LogsPanel.js';
+import { ScriptsModal } from './components/ScriptsModal.js';
 import { Sidebar } from './components/Sidebar.js';
 import { TargetPanel } from './components/TargetPanel.js';
 import { useTerminalSize } from './hooks/useTerminalSize.js';
@@ -59,6 +60,7 @@ export const App = (): React.JSX.Element => {
       <Footer />
       {activeModal === 'add' && <AddDependencyModal />}
       {activeModal === 'config' && <ConfigModal />}
+      {activeModal === 'scripts' && <ScriptsModal />}
     </Box>
   );
 };

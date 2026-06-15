@@ -12,7 +12,8 @@ export const Footer = (): React.JSX.Element => {
         CWD: {target.cwd} | Branch: {target.branch}
       </Text>
       <Text bold>
-        [r] Run [f] Force Run [s] Stop [a] Add Dep [c] Config [q] Quit
+        [r] Run [f] Force Run [s] Stop [a] Add Dep [c] Config [S] Scripts [q]
+        Quit
       </Text>
     </Box>
   );

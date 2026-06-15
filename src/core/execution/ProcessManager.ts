@@ -66,6 +66,60 @@ export class ProcessManager {
       });
   }
 
+  public spawnShellProcess(
+    name: string,
+    commandString: string,
+    type: ProcessType
+  ): void {
+    const fullArgs = ['-q', '/dev/null', 'sh', '-c', commandString];
+
+    const child = execa('script', fullArgs, {
+      detached: true,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { FORCE_COLOR: '1', COLORTERM: 'truecolor', TERM: 'xterm-256color' },
+    });
+
+    if (child.pid === undefined) {
+      return;
+    }
+
+    const pid = child.pid;
+
+    processStore.getState().addProcess({
+      pid,
+      type,
+      status: 'running',
+      command: name,
+      logs: [],
+    });
+
+    const logParser = new LogParser((line: string, overwrite: boolean) => {
+      processStore.getState().appendLog(pid, line, overwrite);
+    });
+
+    if (child.stdout) {
+      child.stdout.on('data', (chunk: Buffer) => {
+        logParser.parse(chunk);
+      });
+    }
+
+    if (child.stderr) {
+      child.stderr.on('data', (chunk: Buffer) => {
+        logParser.parse(chunk);
+      });
+    }
+
+    child
+      .catch(() => {
+        // Ignore the promise rejection as we handle state via store
+      })
+      .finally(() => {
+        logParser.flush();
+        processStore.getState().updateProcessStatus(pid, 'stopped');
+      });
+  }
+
   public killProcess(pid: number): void {
     try {
       process.kill(-pid, 'SIGKILL');

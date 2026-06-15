@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as ink from 'ink';
 import { render } from 'ink-testing-library';
@@ -83,7 +83,9 @@ describe('useTerminalSize', () => {
     mockStdout.columns = 120;
     mockStdout.rows = 60;
 
-    resizeCallback();
+    act(() => {
+      resizeCallback();
+    });
 
     // Wait for re-render
     await new Promise(resolve => setTimeout(resolve, 10));

@@ -40,7 +40,11 @@ describe('Config Manager I/O', () => {
       const result = await readConfig(basePath);
 
       expect(mockFs.readFile).toHaveBeenCalledWith(configPath, 'utf-8');
-      expect(result).toEqual(validConfig);
+      expect(result).toEqual({
+        ...validConfig,
+        customScripts: [],
+        dependencies: undefined,
+      });
       expect(mockFs.writeFile).not.toHaveBeenCalled();
     });
 
@@ -51,10 +55,10 @@ describe('Config Manager I/O', () => {
 
       const result = await readConfig(basePath);
 
-      expect(result).toEqual({ containers: [] });
+      expect(result).toEqual({ containers: [], customScripts: [] });
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configPath,
-        JSON.stringify({ containers: [] }, null, 2),
+        JSON.stringify({ containers: [], customScripts: [] }, null, 2),
         'utf-8'
       );
     });
@@ -64,19 +68,19 @@ describe('Config Manager I/O', () => {
 
       const result = await readConfig(basePath);
 
-      expect(result).toEqual({ containers: [] });
+      expect(result).toEqual({ containers: [], customScripts: [] });
     });
 
     it('should return a default template if parsed JSON is not an object', async () => {
       mockFs.readFile.mockResolvedValueOnce(JSON.stringify(123));
       const result = await readConfig(basePath);
-      expect(result).toEqual({ containers: [] });
+      expect(result).toEqual({ containers: [], customScripts: [] });
     });
 
     it('should return a default template if containers is missing or not an array', async () => {
       mockFs.readFile.mockResolvedValueOnce(JSON.stringify({ other: true }));
       const result = await readConfig(basePath);
-      expect(result).toEqual({ containers: [] });
+      expect(result).toEqual({ containers: [], customScripts: [] });
     });
 
     it('should filter out non-string items from containers array', async () => {
@@ -85,7 +89,27 @@ describe('Config Manager I/O', () => {
 
       const result = await readConfig(basePath);
 
-      expect(result).toEqual({ containers: ['/app/1', '/app/2'] });
+      expect(result).toEqual({
+        containers: ['/app/1', '/app/2'],
+        customScripts: [],
+      });
+    });
+
+    it('should extract valid custom scripts', async () => {
+      const configWithScripts = {
+        containers: ['/app/1'],
+        customScripts: [
+          { type: 'test', name: 'valid', command: 'echo 1' },
+          { invalid: 'script' },
+        ],
+      };
+      mockFs.readFile.mockResolvedValueOnce(JSON.stringify(configWithScripts));
+
+      const result = await readConfig(basePath);
+
+      expect(result.customScripts).toEqual([
+        { type: 'test', name: 'valid', command: 'echo 1' },
+      ]);
     });
   });
 });
