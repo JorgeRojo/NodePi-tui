@@ -12,4 +12,4 @@ Based on the specifications, UI design, and implementation plan, the entire proj
 | **PRD-06** | **TUI Interactivity & Modals**         | Keyboard hooks (`[a]`, `[m]`, `[x]`), interactive `@inkjs/ui` Selectors for scripts, and dynamic mode toggling.                        | ✅ DONE    |
 | **PRD-07** | **Custom Scripts Engine**              | Support for defining custom scripts in `.nodepirc.json` (type, name, terminal command) to override or augment `package.json` defaults. | ✅ DONE    |
 | **PRD-08** | **Orchestration Sequence**             | Implementation of the `[r]` Run flow: clean -> pre-build -> installs -> topological builds -> inject -> cache bust -> dev server.      | ✅ DONE    |
-| **PRD-09** | **Backup & Restoration Engine**        | Pre-run physical backup of `package.json` & `node_modules`. Instant exit restoration bypassing `pnpm install`.                         | ⚪ PENDING |
+| **PRD-09** | **Backup & Restoration Engine**        | Pre-run physical backup of `package.json` & `node_modules`. Instant exit restoration bypassing `pnpm install`.                         | ✅ DONE    |
