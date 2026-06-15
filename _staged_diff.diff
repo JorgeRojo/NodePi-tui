@@ -1,0 +1,1241 @@
+diff --git a/.gemini/skills/orchestrate-dev-task.md b/.gemini/skills/orchestrate-dev-task.md
+index 3495c82..0c36ff5 100644
+--- a/.gemini/skills/orchestrate-dev-task.md
++++ b/.gemini/skills/orchestrate-dev-task.md
+@@ -33,8 +33,9 @@ Full TypeScript implementation pipeline: read provided PRD → generate PRT (Pro
+ - **CRITICAL**: Instruct the subagent that while the provided PRD has the highest priority, the subagent MUST also explore and utilize the full project context, all relevant documentation, and the `.gemini/rules/` of the project to properly calculate and generate the PRT.
+ - **CRITICAL**: Instruct the subagent to use the **codegraph MCP tools** to query the codebase and understand dependencies, structures, and existing implementations before writing the PRT.
+ - The subagent must save the PRT in the `./DOCS/TASKS/[PRD_NAME]/` directory, and its filename MUST start with `_` (e.g. `_PRT.md`). Create the directory if it doesn't exist.
++- Use the `run_command` tool to execute `open file://<absolute-path-to-prt>` (or `open -a "Google Chrome" <path>` if Google Chrome is preferred) so that the PRT opens automatically in the user's internet browser.
+ - **STOP HERE. Ask the user to review the PRT before proceeding.**
+-- Wait for user confirmation. Do NOT proceed to Step 3 until the user explicitly confirms.
++- Wait for user confirmation. Do NOT proceed to Step 4 until the user explicitly confirms.
+ 
+ ### Step 4: Analyze, Split & Plan Execution
+ 
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Cache.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Cache.md
+new file mode 100644
+index 0000000..b409e2d
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Cache.md
+@@ -0,0 +1,17 @@
++# Dev Report: Step 2: Implement Smart Cache Manager
++## Files
++| Action | File |
++|---|---|
++| Create | `src/core/execution/cache.ts` |
++| Create | `src/core/execution/__tests__/cache.test.ts` |
++| Fix | `src/core/execution/viteWrapper.ts` |
++
++## Validation
++| Check | Result |
++|---|---|
++| `pnpm tsc --noEmit` | Passed |
++| `pnpm test src/core/execution` | Passed (35 tests total passed, 100% coverage target) |
++| `pnpm lint` | Passed |
++
++## Issues
++None. All components were implemented according to specifications and test coverage is complete, verifying cache persistence to `.nodepi-cache.json` using SHA256 hashes ignoring standard metadata directories.
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Orchestrator.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Orchestrator.md
+new file mode 100644
+index 0000000..febb8c9
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Orchestrator.md
+@@ -0,0 +1,17 @@
++# Dev Report: Implement Orchestrator Sequence
++
++## Files
++| Action | File |
++|--------|------|
++| Create | `src/core/execution/orchestrator.ts` |
++| Create | `src/core/execution/__tests__/orchestrator.test.ts` |
++
++## Validation
++| Check | Result |
++|-------|--------|
++| `pnpm tsc --noEmit` | Pass |
++| `pnpm test src/core/execution/__tests__/orchestrator.test.ts` | Pass |
++| `pnpm lint` | Pass |
++
++## Issues
++- None. The orchestrator successfully implements the Sequential Phase (clean, install, pre-build caching via `cache.ts`), Target Install, Inject Phase (via `viteWrapper.ts`), and Parallel Phase (watchers and dev server). All validation passed with 100% mocked tests as required by testing-vitest.md rules.
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_State.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_State.md
+new file mode 100644
+index 0000000..ea0fffa
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_State.md
+@@ -0,0 +1,13 @@
++# Dev Report: Update App Store with Pipeline State
++## Files
++| Action | File |
++| :--- | :--- |
++| Modified | `src/store/appStore.ts` |
++## Validation
++| Check | Result |
++| :--- | :--- |
++| `pnpm tsc --noEmit` | Pass |
++| `pnpm test` | Pass |
++| `pnpm lint` | Pass |
++## Issues
++None.
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_UI.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_UI.md
+new file mode 100644
+index 0000000..3fb674d
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_UI.md
+@@ -0,0 +1,18 @@
++# Dev Report: UI Integration (Phase 3, Steps 6 & 7)
++
++## Files
++| Action | File |
++|---|---|
++| Create | `src/ui/hooks/useGlobalKeybindings.ts` |
++| Modify | `src/ui/App.tsx` |
++| Modify | `src/ui/components/Header.tsx` |
++
++## Validation
++| Check | Result |
++|---|---|
++| `pnpm tsc --noEmit` | Passed |
++| `pnpm run lint` | Passed |
++| `pnpm test` | Passed |
++
++## Issues
++No unresolved issues. The global keybindings hook was properly added to `App.tsx`, and the visual indicator for `pipelineStatus === 'running'` was added to `Header.tsx` as well. State changes via the `runPipeline` function from the orchestrator and process cleanup using `processManager.killProcess` were connected to `[r]`, `[f]`, and `[s]` keys respectively.
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_ViteWrapper.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_ViteWrapper.md
+new file mode 100644
+index 0000000..d5364f1
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_ViteWrapper.md
+@@ -0,0 +1,17 @@
++# Dev Report: Phase 1 (Vite Wrapper) Step 3
++
++## Files
++| Action | File |
++|---|---|
++| Create | `src/core/execution/viteWrapper.ts` |
++| Create | `src/core/execution/__tests__/viteWrapper.test.ts` |
++
++## Validation
++| Check | Result |
++|---|---|
++| `pnpm test src/core/execution/__tests__/viteWrapper.test.ts` | Pass |
++| `pnpm tsc` | Failed globally (due to concurrent agent modifying `cache.test.ts` causing syntax errors; `viteWrapper.ts` compiles perfectly). |
++| `pnpm lint` | Pass |
++
++## Issues
++- `cache.test.ts` is currently failing compilation due to another concurrent process/agent. My implemented code (`viteWrapper.ts`) passes its specific test suite.
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Watchers.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Watchers.md
+new file mode 100644
+index 0000000..0ed1da2
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_DevReport_Watchers.md
+@@ -0,0 +1,17 @@
++# Dev Report: Watchers Implementation
++
++## Files
++| Action | File |
++|---|---|
++| Created | `src/core/execution/watcher.ts` |
++| Created | `src/core/execution/__tests__/watcher.test.ts` |
++
++## Validation
++| Check | Result |
++|---|---|
++| `pnpm tsc --noEmit` | Verified correct for `watcher.ts` and `watcher.test.ts`. Note: Global `pnpm tsc --noEmit` command currently fails due to unrelated issues in `src/core/execution/__tests__/cache.test.ts` which is out of scope for this task. |
++| `pnpm test src/core/execution/__tests__/watcher.test.ts` | Passed (all 6 tests passing) |
++| `pnpm eslint` | Passed (auto-fixed import sorting and removed unused variables) |
++
++## Issues
++- `src/core/execution/__tests__/cache.test.ts` currently has compilation errors due to incorrect imports/mocking of `fs/promises`. This file is part of Step 2 of the PRT and falls outside the scope of this step (Step 4), so it was left untouched.
+diff --git a/DOCS/TASKS/PRD-08-Orchestration-Sequence/_PRT.md b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_PRT.md
+new file mode 100644
+index 0000000..175fd58
+--- /dev/null
++++ b/DOCS/TASKS/PRD-08-Orchestration-Sequence/_PRT.md
+@@ -0,0 +1,120 @@
++# PRT: 08-Orchestration-Sequence
++
++## Overview
++PRD: `DOCS/TASKS/PRD-08-Orchestration-Sequence/PRD-08-Orchestration-Sequence.md`
++This PRT details the implementation of the orchestration sequence in NodePi-tui. It covers the creation of the core execution pipeline (cache management, Vite wrapper generation, chokidar+rsync watchers, and the sequential/parallel orchestrator), alongside the necessary global keybindings in the Ink UI to trigger these flows.
++
++## 🔍 Codebase Analysis
++- **`src/store/appStore.ts`**: The central state. Needs a new status flag (`pipelineStatus`) to track if the system is running or idle, avoiding duplicate executions.
++- **`src/core/execution/ProcessManager.ts`**: Already implements secure `{ detached: true }` spawning and PTY emulation (`script -q /dev/null`). The orchestrator will leverage this for all shell-based executions (`pnpm`, dev server).
++- **`src/core/config-manager/sorter.ts`**: Contains `sortTopologically` which will be used by the orchestrator to build local dependencies in the correct order.
++- **Rules Applied**:
++  - `typescript.md`: Strict typing, `NodeNext` `.js` import enforcement.
++  - `testing-vitest.md`: `vi.mock('execa')`, `vi.mock('chokidar')`, `afterEach(vi.clearAllMocks)` are mandatory for testing the pipeline without side-effects.
++  - `architecture-ink.md`: No JSX from hooks (`useGlobalKeybindings`), use pure services for core logic, no `console.log`.
++  - `agent-harnessing.md`: Always use `pnpm` for tasks.
++
++## 📁 Scope of Changes
++- ✨ `src/core/execution/cache.ts` — Create
++- ✨ `src/core/execution/viteWrapper.ts` — Create
++- ✨ `src/core/execution/watcher.ts` — Create
++- ✨ `src/core/execution/orchestrator.ts` — Create
++- ✨ `src/ui/hooks/useGlobalKeybindings.ts` — Create
++- ✨ `src/core/execution/__tests__/cache.test.ts` — Create
++- ✨ `src/core/execution/__tests__/viteWrapper.test.ts` — Create
++- ✨ `src/core/execution/__tests__/watcher.test.ts` — Create
++- ✨ `src/core/execution/__tests__/orchestrator.test.ts` — Create
++- ✏️ `src/store/appStore.ts` — Modify
++- ✏️ `src/ui/App.tsx` — Modify
++
++## 📋 Implementation Steps
++
++### Step 1: Update App Store with Pipeline State
++**File**: `src/store/appStore.ts`
++**Action**: Modify
++**What to do**: 
++- Add `pipelineStatus: 'idle' | 'running' | 'error'` to `AppState`.
++- Add `setPipelineStatus: (status: AppState['pipelineStatus']) => void` to the store actions.
++**Rules to follow**: `typescript.md` (no `any`), `architecture-ink.md` (state organization).
++
++### Step 2: Implement Smart Cache Manager
++**File**: `src/core/execution/cache.ts`
++**Action**: Create
++**Reference**: `src/core/config-manager/io.ts`
++**What to do**:
++- Implement a class or functions to hash a directory using native `crypto` module.
++- Provide `isCacheValid(dirPath)` and `updateCache(dirPath)` methods.
++- Read/write from/to `.nodepi-cache.json` in the target `cwd`.
++**Rules to follow**: `typescript.md` (ESM imports `.js`), `agent-harnessing.md` (no raw shell for `cat`/`ls`).
++
++### Step 3: Implement Vite Wrapper Generator
++**File**: `src/core/execution/viteWrapper.ts`
++**Action**: Create
++**What to do**:
++- Create `injectViteWrapper(targetCwd: string)` which reads the target's `package.json` to inject `"injected": true`.
++- Generate a `.vite.config.nodepi.ts` file extending the target's existing config, forcing pre-bundling caches to be disabled (e.g., overriding `optimizeDeps`).
++**Rules to follow**: `typescript.md` (strict typing for parsed JSON).
++
++### Step 4: Implement Native Sync Watchers
++**File**: `src/core/execution/watcher.ts`
++**Action**: Create
++**What to do**:
++- Use `chokidar` to watch local dependency source directories.
++- On change, trigger `rsync -avz --exclude node_modules <source> <target>` via `execa`.
++- Keep track of watcher instances to cleanly close them when the pipeline stops.
++**Rules to follow**: `architecture-ink.md` (parallel steps).
++
++### Step 5: Implement the Orchestrator Sequence
++**File**: `src/core/execution/orchestrator.ts`
++**Action**: Create
++**Reference**: `src/core/execution/ProcessManager.ts`
++**What to do**:
++- Create an async `runPipeline(force: boolean)` function.
++- Read the store to get dependencies, sort them via `sortTopologically`.
++- **Sequential Phase**: Clean -> Pre-Build (`pnpm build` if cache invalid or `force` is true) -> Install (`pnpm install`) -> Inject (via Vite wrapper).
++- **Parallel Phase**: Launch `watcher.ts` instances and the dev server via `ProcessManager.spawnProcess('pnpm', ['run', devScript], 'dev')`.
++- Handle errors gracefully and update `pipelineStatus` in the store.
++**Rules to follow**: `architecture-ink.md` (Sequential vs Parallel tasks).
++
++### Step 6: Create Global Keybindings Hook
++**File**: `src/ui/hooks/useGlobalKeybindings.ts`
++**Action**: Create
++**What to do**:
++- Create a hook utilizing Ink's `useInput`.
++- Extract `activeModal`, `pipelineStatus`, and target metadata from `useAppStore()`.
++- Ignore inputs if `activeModal !== 'none'`.
++- On `r`: if idle, call `runPipeline(false)`.
++- On `f`: if idle, call `runPipeline(true)`.
++- On `s`: call `processManager` to kill all active PIDs and set status to idle.
++**Rules to follow**: `architecture-ink.md` (Hooks must return pure data/handlers, never JSX).
++
++### Step 7: Integrate Keybindings into App Component
++**File**: `src/ui/App.tsx`
++**Action**: Modify
++**What to do**:
++- Call `useGlobalKeybindings()` at the top level of the component.
++- Optionally show a visual indicator in the Header or Footer when `pipelineStatus === 'running'`.
++**Rules to follow**: `architecture-ink.md` (Responsive Layout, pure rendering).
++
++### Step 8: Write Comprehensive Tests
++**File**: `src/core/execution/__tests__/*.test.ts`
++**Action**: Create
++**What to do**:
++- Test `cache.ts` by mocking `fs` and `crypto`.
++- Test `viteWrapper.ts` by mocking `fs/promises`.
++- Test `watcher.ts` by mocking `chokidar` and `execa`.
++- Test `orchestrator.ts` by mocking all internal phases and `ProcessManager`.
++**Rules to follow**: `testing-vitest.md` (100% coverage target, `vi.mock()`, `afterEach(vi.clearAllMocks)`, NEVER spawn real OS processes).
++
++## 🔗 Step Dependencies
++1. Step 1 (State) must be done first.
++2. Steps 2, 3, and 4 (Core Utilities) can be implemented in parallel.
++3. Step 5 (Orchestrator) depends on Steps 1, 2, 3, and 4.
++4. Step 6 & 7 (UI Integration) depend on Step 5.
++5. Step 8 (Tests) should be written alongside or immediately following each module (TDD).
++
++## ✅ Validation Checklist
++- [ ] TypeScript: `pnpm tsc --noEmit`
++- [ ] Tests: `pnpm test src/core/execution`
++- [ ] Coverage: `pnpm test --run --coverage`
++- [ ] UI Interaction: Pressing `[r]` transitions the application into Running state without crashing the layout.
+diff --git a/src/core/execution/__tests__/cache.test.ts b/src/core/execution/__tests__/cache.test.ts
+new file mode 100644
+index 0000000..48e60b6
+--- /dev/null
++++ b/src/core/execution/__tests__/cache.test.ts
+@@ -0,0 +1,143 @@
++import type { MockedFunction } from 'vitest';
++import { afterEach,beforeEach, describe, expect, it, vi } from 'vitest';
++import type { Dirent, Stats } from 'fs';
++import fs from 'fs/promises';
++import path from 'path';
++
++import { hashDirectory, isCacheValid, updateCache } from '../cache.js';
++
++vi.mock('fs/promises');
++
++describe('Cache Manager', () => {
++  const mockDirPath = '/mock/dir';
++  const mockCachePath = path.join(mockDirPath, '.nodepi-cache.json');
++
++  beforeEach(() => {
++    vi.clearAllMocks();
++  });
++
++  afterEach(() => {
++    vi.clearAllMocks();
++  });
++
++  describe('hashDirectory', () => {
++    it('should calculate hash based on directory contents and ignore ignored dirs', async () => {
++      const mockReaddir = vi.mocked(fs.readdir) as MockedFunction<typeof fs.readdir>;
++      const mockStat = vi.mocked(fs.stat) as MockedFunction<typeof fs.stat>;
++
++      mockReaddir.mockImplementation((async (dir: any) => {
++        if (dir === mockDirPath) {
++          return [
++            { name: 'file1.ts', isDirectory: () => false, isFile: () => true },
++            { name: 'node_modules', isDirectory: () => true, isFile: () => false },
++            { name: 'subdir', isDirectory: () => true, isFile: () => false }
++          ] as unknown as Dirent[];
++        }
++        if (dir === path.join(mockDirPath, 'subdir')) {
++          return [
++            { name: 'file2.ts', isDirectory: () => false, isFile: () => true }
++          ] as unknown as Dirent[];
++        }
++        return [] as unknown as Dirent[];
++      }) as any);
++
++      mockStat.mockImplementation((async () => {
++        return { mtimeMs: 12345, size: 100 } as unknown as Stats;
++      }) as any);
++
++      const hash = await hashDirectory(mockDirPath);
++      expect(hash).toBeTypeOf('string');
++      expect(hash.length).toBeGreaterThan(0);
++      expect(mockReaddir).toHaveBeenCalledTimes(2);
++      expect(mockStat).toHaveBeenCalledTimes(2);
++    });
++
++    it('should handle unreadable directories gracefully', async () => {
++      const mockReaddir = vi.mocked(fs.readdir);
++      mockReaddir.mockRejectedValue(new Error('Access denied'));
++      const hash = await hashDirectory(mockDirPath);
++      expect(hash).toBeTypeOf('string');
++    });
++
++    it('should handle unreadable files gracefully', async () => {
++      const mockReaddir = vi.mocked(fs.readdir) as MockedFunction<typeof fs.readdir>;
++      const mockStat = vi.mocked(fs.stat) as MockedFunction<typeof fs.stat>;
++
++      mockReaddir.mockImplementation((async (dir: any) => {
++        if (dir === mockDirPath) {
++          return [
++            { name: 'file1.ts', isDirectory: () => false, isFile: () => true },
++          ] as unknown as Dirent[];
++        }
++        return [] as unknown as Dirent[];
++      }) as any);
++
++      mockStat.mockRejectedValue(new Error('Access denied'));
++
++      const hash = await hashDirectory(mockDirPath);
++      expect(hash).toBeTypeOf('string');
++      expect(mockReaddir).toHaveBeenCalledTimes(1);
++      expect(mockStat).toHaveBeenCalledTimes(1);
++    });
++  });
++
++  describe('isCacheValid', () => {
++    it('should return true if cache matches current hash', async () => {
++      const mockReaddir = vi.mocked(fs.readdir);
++      mockReaddir.mockResolvedValue([]);
++      const currentHash = await hashDirectory(mockDirPath);
++
++      const mockReadFile = vi.mocked(fs.readFile);
++      mockReadFile.mockResolvedValue(JSON.stringify({ hash: currentHash }));
++
++      const result = await isCacheValid(mockDirPath);
++      expect(result).toBe(true);
++      expect(mockReadFile).toHaveBeenCalledWith(mockCachePath, 'utf-8');
++    });
++
++    it('should return false if cache is missing', async () => {
++      const mockReaddir = vi.mocked(fs.readdir);
++      mockReaddir.mockResolvedValue([]);
++      const mockReadFile = vi.mocked(fs.readFile);
++      mockReadFile.mockRejectedValue(new Error('ENOENT'));
++      const result = await isCacheValid(mockDirPath);
++      expect(result).toBe(false);
++    });
++
++    it('should return false if cache is invalid JSON', async () => {
++      const mockReaddir = vi.mocked(fs.readdir);
++      mockReaddir.mockResolvedValue([]);
++      const mockReadFile = vi.mocked(fs.readFile);
++      mockReadFile.mockResolvedValue('invalid-json');
++      const result = await isCacheValid(mockDirPath);
++      expect(result).toBe(false);
++    });
++
++    it('should return false if hash mismatches', async () => {
++      const mockReaddir = vi.mocked(fs.readdir);
++      mockReaddir.mockResolvedValue([]);
++      const mockReadFile = vi.mocked(fs.readFile);
++      mockReadFile.mockResolvedValue(JSON.stringify({ hash: 'old-hash' }));
++
++      const result = await isCacheValid(mockDirPath);
++      expect(result).toBe(false);
++    });
++  });
++
++  describe('updateCache', () => {
++    it('should write current hash to cache file', async () => {
++      const mockReaddir = vi.mocked(fs.readdir);
++      mockReaddir.mockResolvedValue([]);
++      const currentHash = await hashDirectory(mockDirPath);
++
++      const mockWriteFile = vi.mocked(fs.writeFile);
++      await updateCache(mockDirPath);
++
++      expect(mockWriteFile).toHaveBeenCalledWith(
++        mockCachePath,
++        JSON.stringify({ hash: currentHash }, null, 2),
++        'utf-8'
++      );
++    });
++  });
++});
+diff --git a/src/core/execution/__tests__/orchestrator.test.ts b/src/core/execution/__tests__/orchestrator.test.ts
+new file mode 100644
+index 0000000..667a458
+--- /dev/null
++++ b/src/core/execution/__tests__/orchestrator.test.ts
+@@ -0,0 +1,145 @@
++import { afterEach,beforeEach, describe, expect, it, vi } from 'vitest';
++import { execa } from 'execa';
++import fs from 'fs/promises';
++
++import { useAppStore } from '../../../store/appStore.js';
++import { isCacheValid, updateCache } from '../cache.js';
++import { runPipeline } from '../orchestrator.js';
++import { processManager } from '../ProcessManager.js';
++import { injectViteWrapper } from '../viteWrapper.js';
++import { syncWatcher } from '../watcher.js';
++
++vi.mock('fs/promises');
++vi.mock('execa');
++vi.mock('../cache.js');
++vi.mock('../viteWrapper.js');
++
++vi.mock('../../../store/appStore.js', () => {
++  const mockGetState = vi.fn();
++  return {
++    useAppStore: {
++      getState: mockGetState
++    }
++  };
++});
++
++vi.mock('../watcher.js', () => ({
++  syncWatcher: { watch: vi.fn(), closeAll: vi.fn() }
++}));
++
++vi.mock('../ProcessManager.js', () => ({
++  processManager: { spawnProcess: vi.fn(), spawnShellProcess: vi.fn(), killProcess: vi.fn() }
++}));
++
++describe('runPipeline', () => {
++  let mockSetPipelineStatus: ReturnType<typeof vi.fn>;
++
++  beforeEach(() => {
++    mockSetPipelineStatus = vi.fn();
++    
++    vi.mocked(useAppStore.getState).mockReturnValue({
++      pipelineStatus: 'idle',
++      setPipelineStatus: mockSetPipelineStatus,
++      target: { cwd: '/mock/target', devScript: 'pnpm run dev', name: 'app', branch: 'main', version: '1' },
++      dependencies: [
++        { name: 'depA', type: 'Sync', path: '/mock/depA', enabled: true, version: '1' },
++        { name: 'depB', type: 'Inject', path: '/mock/depB', enabled: true, version: '1' },
++        { name: 'depC', type: 'Sync', path: '/mock/depC', enabled: false, version: '1' } // Disabled
++      ],
++      activeProcesses: [],
++      timeline: [],
++      logs: [],
++      containerDirs: [],
++      customScripts: [],
++      focusedDependencyIndex: 0,
++      activeModal: 'none',
++      setTarget: vi.fn(),
++      setDependencies: vi.fn(),
++      setActiveProcesses: vi.fn(),
++      setTimeline: vi.fn(),
++      addLog: vi.fn(),
++      setFocusedDependencyIndex: vi.fn(),
++      setActiveModal: vi.fn(),
++      toggleDependency: vi.fn(),
++      toggleDependencyMode: vi.fn(),
++      removeDependency: vi.fn(),
++      addCustomScript: vi.fn()
++    });
++
++    vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
++      const pathStr = String(filePath);
++      if (pathStr.includes('depA')) {
++        return JSON.stringify({ name: 'depA' });
++      }
++      if (pathStr.includes('depB')) {
++        return JSON.stringify({ name: 'depB', dependencies: { depA: '1.0' } });
++      }
++      return '{}';
++    });
++
++    vi.mocked(fs.rm).mockResolvedValue(undefined);
++    vi.mocked(isCacheValid).mockResolvedValue(false);
++    vi.mocked(updateCache).mockResolvedValue(undefined);
++    vi.mocked(injectViteWrapper).mockResolvedValue(undefined);
++    vi.mocked(execa).mockResolvedValue({} as any);
++  });
++
++  afterEach(() => {
++    vi.clearAllMocks();
++  });
++
++  it('runs pipeline correctly and respects topology', async () => {
++    await runPipeline();
++    
++    expect(mockSetPipelineStatus).toHaveBeenCalledWith('running');
++
++    // Expected execa calls: 
++    // depA install, depA build
++    // depB install, depB build
++    // target install
++    expect(execa).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/mock/depA' });
++    expect(execa).toHaveBeenCalledWith('pnpm', ['run', 'build'], { cwd: '/mock/depA' });
++    expect(execa).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/mock/depB' });
++    expect(execa).toHaveBeenCalledWith('pnpm', ['run', 'build'], { cwd: '/mock/depB' });
++    expect(execa).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/mock/target' });
++    
++    // Inject wrapper
++    expect(injectViteWrapper).toHaveBeenCalledWith('/mock/target');
++    
++    // Watchers
++    expect(syncWatcher.watch).toHaveBeenCalledWith('/mock/depA', expect.stringContaining('depA'));
++    
++    // Process manager
++    expect(processManager.spawnProcess).toHaveBeenCalledWith('pnpm', ['run', 'dev'], 'dev');
++  });
++
++  it('skips build if cache is valid and not forced', async () => {
++    vi.mocked(isCacheValid).mockResolvedValue(true);
++    await runPipeline();
++    
++    expect(execa).not.toHaveBeenCalledWith('pnpm', ['run', 'build'], { cwd: '/mock/depA' });
++  });
++
++  it('forces build if force flag is passed even if cache is valid', async () => {
++    vi.mocked(isCacheValid).mockResolvedValue(true);
++    await runPipeline(true);
++    
++    expect(execa).toHaveBeenCalledWith('pnpm', ['run', 'build'], { cwd: '/mock/depA' });
++  });
++
++  it('returns early if already running', async () => {
++    vi.mocked(useAppStore.getState).mockReturnValueOnce({
++      pipelineStatus: 'running'
++    } as any);
++
++    await runPipeline();
++    expect(mockSetPipelineStatus).not.toHaveBeenCalled();
++    expect(execa).not.toHaveBeenCalled();
++  });
++
++  it('sets error status and throws if a step fails', async () => {
++    vi.mocked(execa).mockRejectedValueOnce(new Error('Execa Error'));
++    await expect(runPipeline()).rejects.toThrow('Execa Error');
++    expect(mockSetPipelineStatus).toHaveBeenCalledWith('error');
++  });
++});
+diff --git a/src/core/execution/__tests__/viteWrapper.test.ts b/src/core/execution/__tests__/viteWrapper.test.ts
+new file mode 100644
+index 0000000..fdf60f1
+--- /dev/null
++++ b/src/core/execution/__tests__/viteWrapper.test.ts
+@@ -0,0 +1,89 @@
++import type { Mock } from 'vitest';
++import { afterEach,describe, expect, it, vi } from 'vitest';
++import * as fs from 'fs/promises';
++import path from 'path';
++
++import { injectViteWrapper } from '../viteWrapper.js';
++
++vi.mock('fs/promises');
++
++describe('injectViteWrapper', () => {
++  afterEach(() => {
++    vi.clearAllMocks();
++  });
++
++  it('should inject "injected": true into package.json and generate basic Vite config if none exists', async () => {
++    const targetCwd = '/target/dir';
++    const pkgPath = path.join(targetCwd, 'package.json');
++    const viteConfigPath = path.join(targetCwd, '.vite.config.nodepi.ts');
++
++    const originalPkg = { name: 'test-app', version: '1.0.0' };
++    
++    (fs.readFile as Mock).mockResolvedValueOnce(JSON.stringify(originalPkg));
++    (fs.access as Mock).mockRejectedValue(new Error('ENOENT')); // no existing config
++
++    await injectViteWrapper(targetCwd);
++
++    expect(fs.readFile).toHaveBeenCalledWith(pkgPath, 'utf8');
++    
++    const expectedPkg = { ...originalPkg, injected: true };
++    expect(fs.writeFile).toHaveBeenCalledWith(pkgPath, JSON.stringify(expectedPkg, null, 2), 'utf8');
++
++    const expectedConfig = `import { defineConfig } from 'vite';
++
++export default defineConfig({
++  optimizeDeps: {
++    force: true
++  }
++});
++`;
++    expect(fs.writeFile).toHaveBeenCalledWith(viteConfigPath, expectedConfig, 'utf8');
++  });
++
++  it('should merge with existing vite.config.js if it exists', async () => {
++    const targetCwd = '/target/dir';
++    const originalPkg = { name: 'test-app' };
++    
++    (fs.readFile as Mock).mockResolvedValueOnce(JSON.stringify(originalPkg));
++    
++    // access is called for possibleConfigs in order:
++    // vite.config.ts, vite.config.js, vite.config.mjs, vite.config.cjs
++    (fs.access as Mock).mockImplementation(async (filePath: string) => {
++      if (filePath.endsWith('vite.config.js')) {
++        return Promise.resolve();
++      }
++      return Promise.reject(new Error('ENOENT'));
++    });
++
++    await injectViteWrapper(targetCwd);
++
++    const viteConfigPath = path.join(targetCwd, '.vite.config.nodepi.ts');
++    const expectedConfig = `import { defineConfig, mergeConfig } from 'vite';
++import userConfig from './vite.config.js';
++
++export default mergeConfig(
++  userConfig,
++  defineConfig({
++    optimizeDeps: {
++      force: true
++    }
++  })
++);
++`;
++    expect(fs.writeFile).toHaveBeenCalledWith(viteConfigPath, expectedConfig, 'utf8');
++  });
++
++  it('should throw an error if package.json is invalid json', async () => {
++    const targetCwd = '/target/dir';
++    (fs.readFile as Mock).mockResolvedValueOnce('invalid json');
++
++    await expect(injectViteWrapper(targetCwd)).rejects.toThrow();
++  });
++  
++  it('should throw an error if package.json does not parse to an object', async () => {
++    const targetCwd = '/target/dir';
++    (fs.readFile as Mock).mockResolvedValueOnce('"string-not-object"');
++
++    await expect(injectViteWrapper(targetCwd)).rejects.toThrow('Invalid package.json format');
++  });
++});
+diff --git a/src/core/execution/__tests__/watcher.test.ts b/src/core/execution/__tests__/watcher.test.ts
+new file mode 100644
+index 0000000..22d1d90
+--- /dev/null
++++ b/src/core/execution/__tests__/watcher.test.ts
+@@ -0,0 +1,129 @@
++import type { Mock } from 'vitest';
++import { afterEach,beforeEach, describe, expect, it, vi } from 'vitest';
++import chokidar from 'chokidar';
++import { execa } from 'execa';
++
++import { syncWatcher } from '../watcher.js';
++
++vi.mock('chokidar', () => {
++  return {
++    default: {
++      watch: vi.fn(),
++    },
++  };
++});
++vi.mock('execa', () => {
++  return {
++    execa: vi.fn(),
++  };
++});
++
++describe('SyncWatcher', () => {
++  let mockOn: Mock;
++  let mockClose: Mock;
++
++  beforeEach(async () => {
++    await syncWatcher.closeAll();
++    mockOn = vi.fn();
++    mockClose = vi.fn().mockResolvedValue(undefined);
++
++    (chokidar.watch as Mock).mockReturnValue({
++      on: mockOn,
++      close: mockClose,
++    });
++  });
++
++  afterEach(async () => {
++    vi.clearAllMocks();
++    await syncWatcher.closeAll();
++  });
++
++  it('should initialize a watcher successfully', () => {
++    syncWatcher.watch('/src', '/dest');
++    
++    expect(chokidar.watch).toHaveBeenCalledWith('/src', {
++      ignored: /node_modules/,
++      ignoreInitial: true,
++      persistent: true,
++    });
++    expect(mockOn).toHaveBeenCalledWith('all', expect.any(Function));
++  });
++
++  it('should trigger rsync on file change event', async () => {
++    syncWatcher.watch('/src', '/dest');
++    
++    const onCallback = mockOn.mock.calls[0][1];
++    
++    // Trigger the callback
++    await onCallback('change', '/src/index.ts');
++    
++    expect(execa).toHaveBeenCalledWith('rsync', ['-avz', '--exclude', 'node_modules', '/src', '/dest']);
++  });
++
++  it('should not initialize multiple watchers for the same source', () => {
++    syncWatcher.watch('/src', '/dest');
++    syncWatcher.watch('/src', '/dest2');
++    
++    expect(chokidar.watch).toHaveBeenCalledTimes(1);
++  });
++
++  it('should cleanly close all watchers', async () => {
++    syncWatcher.watch('/src', '/dest');
++    syncWatcher.watch('/src2', '/dest2');
++    
++    await syncWatcher.closeAll();
++    
++    expect(mockClose).toHaveBeenCalledTimes(2);
++  });
++
++  it('should skip rsync if it is already syncing the same source', async () => {
++    let resolveExeca: (value: unknown) => void;
++    const execaPromise = new Promise((resolve) => {
++      resolveExeca = resolve;
++    });
++    
++    (execa as Mock).mockReturnValue(execaPromise);
++    
++    syncWatcher.watch('/src', '/dest');
++    const onCallback = mockOn.mock.calls[0][1];
++    
++    // Trigger first sync (will block)
++    onCallback('change', '/src/file1.ts');
++    
++    // Trigger second sync immediately
++    onCallback('change', '/src/file2.ts');
++    
++    expect(execa).toHaveBeenCalledTimes(1);
++    
++    // Resolve the first execa
++    resolveExeca!(undefined);
++    
++    // Wait for event loop to process the promise chain
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    
++    // Trigger third sync after first is done
++    onCallback('change', '/src/file3.ts');
++    
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    expect(execa).toHaveBeenCalledTimes(2);
++  });
++
++  it('should handle execa failures gracefully', async () => {
++    (execa as Mock).mockRejectedValue(new Error('rsync failed'));
++    
++    syncWatcher.watch('/src', '/dest');
++    const onCallback = mockOn.mock.calls[0][1];
++    
++    // Should not throw
++    onCallback('change', '/src/file1.ts');
++    
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    
++    // Should be able to trigger again after failure
++    (execa as Mock).mockResolvedValue(undefined);
++    onCallback('change', '/src/file2.ts');
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    
++    expect(execa).toHaveBeenCalledTimes(2);
++  });
++});
+diff --git a/src/core/execution/cache.ts b/src/core/execution/cache.ts
+new file mode 100644
+index 0000000..d8776f1
+--- /dev/null
++++ b/src/core/execution/cache.ts
+@@ -0,0 +1,77 @@
++import crypto from 'crypto';
++import fs from 'fs/promises';
++import path from 'path';
++
++const CACHE_FILENAME = '.nodepi-cache.json';
++const IGNORED_DIRS = new Set([
++  'node_modules',
++  '.git',
++  'dist',
++  'build',
++  '.nodepi-cache.json',
++]);
++
++export const hashDirectory = async (dirPath: string): Promise<string> => {
++  const hash = crypto.createHash('sha256');
++
++  const processDirectory = async (currentPath: string): Promise<void> => {
++    let entries;
++    try {
++      entries = await fs.readdir(currentPath, { withFileTypes: true });
++    } catch {
++      return;
++    }
++
++    // Sort to ensure deterministic hashing
++    entries.sort((a, b) => a.name.localeCompare(b.name));
++
++    for (const entry of entries) {
++      if (IGNORED_DIRS.has(entry.name)) {
++        continue;
++      }
++      const fullPath = path.join(currentPath, entry.name);
++      const relativePath = path.relative(dirPath, fullPath);
++
++      if (entry.isDirectory()) {
++        await processDirectory(fullPath);
++      } else if (entry.isFile()) {
++        try {
++          const stat = await fs.stat(fullPath);
++          hash.update(`${relativePath}:${stat.mtimeMs}:${stat.size}`);
++        } catch {
++          // Ignore unreadable files
++        }
++      }
++    }
++  };
++
++  await processDirectory(dirPath);
++  return hash.digest('hex');
++};
++
++export const isCacheValid = async (dirPath: string): Promise<boolean> => {
++  const cachePath = path.join(dirPath, CACHE_FILENAME);
++  try {
++    const currentHash = await hashDirectory(dirPath);
++    const content = await fs.readFile(cachePath, 'utf-8');
++    const parsed = JSON.parse(content) as unknown;
++
++    if (
++      parsed &&
++      typeof parsed === 'object' &&
++      'hash' in parsed &&
++      typeof (parsed as Record<string, unknown>).hash === 'string'
++    ) {
++      return (parsed as Record<string, unknown>).hash === currentHash;
++    }
++    return false;
++  } catch {
++    return false;
++  }
++};
++
++export const updateCache = async (dirPath: string): Promise<void> => {
++  const cachePath = path.join(dirPath, CACHE_FILENAME);
++  const hash = await hashDirectory(dirPath);
++  await fs.writeFile(cachePath, JSON.stringify({ hash }, null, 2), 'utf-8');
++};
+diff --git a/src/core/execution/orchestrator.ts b/src/core/execution/orchestrator.ts
+new file mode 100644
+index 0000000..92ed97c
+--- /dev/null
++++ b/src/core/execution/orchestrator.ts
+@@ -0,0 +1,85 @@
++import { execa } from 'execa';
++import fs from 'fs/promises';
++import path from 'path';
++
++import { useAppStore } from '../../store/appStore.js';
++import { sortTopologically } from '../config-manager/sorter.js';
++import type { PackageMetadata } from '../config-manager/types.js';
++import { isCacheValid, updateCache } from './cache.js';
++import { injectViteWrapper } from './viteWrapper.js';
++import { syncWatcher } from './watcher.js';
++import { processManager } from './ProcessManager.js';
++
++export async function runPipeline(force: boolean = false): Promise<void> {
++  const store = useAppStore.getState();
++  if (store.pipelineStatus === 'running') {
++    return;
++  }
++  
++  store.setPipelineStatus('running');
++
++  try {
++    const dependencies = store.dependencies.filter(d => d.enabled);
++
++    const pkgs: PackageMetadata[] = [];
++    for (const dep of dependencies) {
++      const pkgPath = path.join(dep.path, 'package.json');
++      try {
++        const pkgRaw = await fs.readFile(pkgPath, 'utf-8');
++        const pkg = JSON.parse(pkgRaw) as PackageMetadata;
++        pkgs.push(pkg);
++      } catch {
++        // Skip dependencies with no package.json or invalid JSON
++      }
++    }
++
++    const sortedPkgs = sortTopologically(pkgs);
++    const sortedDependencies = sortedPkgs
++      .map(pkg => dependencies.find(d => d.name === pkg.name))
++      .filter((d): d is NonNullable<typeof d> => d !== undefined);
++
++    // Sequential Phase
++    for (const dep of sortedDependencies) {
++      const cacheValid = await isCacheValid(dep.path);
++      
++      if (force || !cacheValid) {
++        // Clean
++        await fs.rm(path.join(dep.path, 'dist'), { recursive: true, force: true }).catch(() => {});
++        await fs.rm(path.join(dep.path, 'build'), { recursive: true, force: true }).catch(() => {});
++        
++        // Install
++        await execa('pnpm', ['install'], { cwd: dep.path });
++        
++        // Pre-Build
++        await execa('pnpm', ['run', 'build'], { cwd: dep.path });
++        
++        await updateCache(dep.path);
++      }
++    }
++
++    // Target Install
++    await execa('pnpm', ['install'], { cwd: store.target.cwd });
++
++    // Inject Phase
++    const injectDeps = sortedDependencies.filter(d => d.type === 'Inject');
++    if (injectDeps.length > 0) {
++      await injectViteWrapper(store.target.cwd);
++    }
++
++    // Parallel Phase
++    const syncDeps = sortedDependencies.filter(d => d.type === 'Sync');
++    for (const dep of syncDeps) {
++      const targetPath = path.join(store.target.cwd, 'node_modules', dep.name);
++      syncWatcher.watch(dep.path, targetPath);
++    }
++
++    const [devCmd, ...devArgs] = store.target.devScript.split(' ');
++    if (devCmd) {
++      processManager.spawnProcess(devCmd, devArgs, 'dev');
++    }
++    
++  } catch (error) {
++    store.setPipelineStatus('error');
++    throw error;
++  }
++}
+diff --git a/src/core/execution/viteWrapper.ts b/src/core/execution/viteWrapper.ts
+new file mode 100644
+index 0000000..57df3e2
+--- /dev/null
++++ b/src/core/execution/viteWrapper.ts
+@@ -0,0 +1,65 @@
++import fs from 'fs/promises';
++import path from 'path';
++
++export async function injectViteWrapper(targetCwd: string): Promise<void> {
++  const pkgPath = path.join(targetCwd, 'package.json');
++  
++  const pkgContent = await fs.readFile(pkgPath, 'utf8');
++  const pkg = JSON.parse(pkgContent) as Record<string, unknown>;
++  
++  if (!pkg || typeof pkg !== 'object') {
++    throw new Error('Invalid package.json format');
++  }
++  
++  pkg['injected'] = true;
++  await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2), 'utf8');
++
++  const possibleConfigs = [
++    'vite.config.ts',
++    'vite.config.js',
++    'vite.config.mjs',
++    'vite.config.cjs'
++  ];
++  
++  let existingConfig = '';
++  for (const config of possibleConfigs) {
++    try {
++      await fs.access(path.join(targetCwd, config));
++      existingConfig = config;
++      break;
++    } catch {
++      // Continue checking next possible config
++    }
++  }
++
++  let wrapperContent: string;
++  if (existingConfig) {
++    // ESM import needs the explicit extension if required by Node, but Vite handles extensions automatically in its config resolution.
++    // However, to be perfectly safe with TS NodeNext, we might want to include the extension, but Vite actually prefers resolving it itself.
++    // For safety, we just import the exact file found.
++    wrapperContent = `import { defineConfig, mergeConfig } from 'vite';
++import userConfig from './${existingConfig}';
++
++export default mergeConfig(
++  userConfig,
++  defineConfig({
++    optimizeDeps: {
++      force: true
++    }
++  })
++);
++`;
++  } else {
++    wrapperContent = `import { defineConfig } from 'vite';
++
++export default defineConfig({
++  optimizeDeps: {
++    force: true
++  }
++});
++`;
++  }
++
++  const viteWrapperPath = path.join(targetCwd, '.vite.config.nodepi.ts');
++  await fs.writeFile(viteWrapperPath, wrapperContent, 'utf8');
++}
+diff --git a/src/core/execution/watcher.ts b/src/core/execution/watcher.ts
+new file mode 100644
+index 0000000..d7518bd
+--- /dev/null
++++ b/src/core/execution/watcher.ts
+@@ -0,0 +1,52 @@
++import type { FSWatcher } from 'chokidar';
++import chokidar from 'chokidar';
++import { execa } from 'execa';
++
++export class SyncWatcher {
++  private _watchers: Map<string, FSWatcher> = new Map();
++  private _syncing: Set<string> = new Set();
++
++  public watch(source: string, target: string): void {
++    if (this._watchers.has(source)) {
++      return;
++    }
++
++    const watcher = chokidar.watch(source, {
++      ignored: /node_modules/,
++      ignoreInitial: true,
++      persistent: true,
++    });
++
++    const triggerSync = async (): Promise<void> => {
++      if (this._syncing.has(source)) {
++        return;
++      }
++      this._syncing.add(source);
++      try {
++        await execa('rsync', ['-avz', '--exclude', 'node_modules', source, target]);
++      } catch {
++        // Silently catch errors as console.log is forbidden
++      } finally {
++        this._syncing.delete(source);
++      }
++    };
++
++    watcher.on('all', () => {
++      triggerSync().catch(() => {});
++    });
++
++    this._watchers.set(source, watcher);
++  }
++
++  public async closeAll(): Promise<void> {
++    const promises: Promise<void>[] = [];
++    for (const watcher of this._watchers.values()) {
++      promises.push(watcher.close());
++    }
++    await Promise.all(promises);
++    this._watchers.clear();
++    this._syncing.clear();
++  }
++}
++
++export const syncWatcher = new SyncWatcher();
+diff --git a/src/store/appStore.ts b/src/store/appStore.ts
+index a1595a0..f0e7339 100644
+--- a/src/store/appStore.ts
++++ b/src/store/appStore.ts
+@@ -47,6 +47,7 @@ export interface AppState {
+ 
+   focusedDependencyIndex: number;
+   activeModal: 'none' | 'add' | 'config' | 'scripts';
++  pipelineStatus: 'idle' | 'running' | 'error';
+ 
+   // Actions
+   setTarget: (target: Partial<AppState['target']>) => void;
+@@ -60,6 +61,7 @@ export interface AppState {
+   toggleDependencyMode: (name: string) => void;
+   removeDependency: (name: string) => void;
+   addCustomScript: (script: CustomScript) => void;
++  setPipelineStatus: (status: AppState['pipelineStatus']) => void;
+ }
+ 
+ export const useAppStore = create<AppState>(set => ({
+@@ -113,6 +115,7 @@ export const useAppStore = create<AppState>(set => ({
+   customScripts: [],
+   focusedDependencyIndex: 0,
+   activeModal: 'none',
++  pipelineStatus: 'idle',
+ 
+   setTarget: (target): void =>
+     set(
+@@ -226,6 +229,7 @@ export const useAppStore = create<AppState>(set => ({
+ 
+       return { customScripts };
+     }),
++  setPipelineStatus: (status): void => set({ pipelineStatus: status }),
+ }));
+ 
+ // We also need to save when `setDependencies` or adding from modal happens.
+diff --git a/src/ui/App.tsx b/src/ui/App.tsx
+index 84ede5f..b58dd72 100644
+--- a/src/ui/App.tsx
++++ b/src/ui/App.tsx
+@@ -11,12 +11,15 @@ import { LogsPanel } from './components/LogsPanel.js';
+ import { ScriptsModal } from './components/ScriptsModal.js';
+ import { Sidebar } from './components/Sidebar.js';
+ import { TargetPanel } from './components/TargetPanel.js';
++import { useGlobalKeybindings } from './hooks/useGlobalKeybindings.js';
+ import { useTerminalSize } from './hooks/useTerminalSize.js';
+ 
+ export const App = (): React.JSX.Element => {
+   const { columns, rows } = useTerminalSize();
+   const activeModal = useAppStore(state => state.activeModal);
+ 
++  useGlobalKeybindings();
++
+   if (columns < 80 || rows < 24) {
+     return (
+       <Box
+diff --git a/src/ui/components/Header.tsx b/src/ui/components/Header.tsx
+index 1237a58..65807a9 100644
+--- a/src/ui/components/Header.tsx
++++ b/src/ui/components/Header.tsx
+@@ -1,12 +1,26 @@
+ import React from 'react';
+ import { Box, Text } from 'ink';
+ 
++import { useAppStore } from '../../store/appStore.js';
++
+ export const Header = (): React.JSX.Element => {
++  const pipelineStatus = useAppStore(state => state.pipelineStatus);
++
+   return (
+-    <Box paddingX={1}>
++    <Box paddingX={1} justifyContent="space-between">
+       <Text bold color="white">
+         NodePi v1.0.0
+       </Text>
++      {pipelineStatus === 'running' && (
++        <Text bold color="green">
++          ▶ Running
++        </Text>
++      )}
++      {pipelineStatus === 'error' && (
++        <Text bold color="red">
++          ✖ Error
++        </Text>
++      )}
+     </Box>
+   );
+ };
+diff --git a/src/ui/hooks/useGlobalKeybindings.ts b/src/ui/hooks/useGlobalKeybindings.ts
+new file mode 100644
+index 0000000..a9a3497
+--- /dev/null
++++ b/src/ui/hooks/useGlobalKeybindings.ts
+@@ -0,0 +1,38 @@
++import { useInput } from 'ink';
++
++import { runPipeline } from '../../core/execution/orchestrator.js';
++import { processManager } from '../../core/execution/ProcessManager.js';
++import { useAppStore } from '../../store/appStore.js';
++import { processStore } from '../../store/processStore.js';
++
++export const useGlobalKeybindings = (): void => {
++  const activeModal = useAppStore(state => state.activeModal);
++  const pipelineStatus = useAppStore(state => state.pipelineStatus);
++  const setPipelineStatus = useAppStore(state => state.setPipelineStatus);
++
++  useInput((input) => {
++    if (activeModal !== 'none') {
++      return;
++    }
++
++    if (input === 'r') {
++      if (pipelineStatus === 'idle' || pipelineStatus === 'error') {
++        void runPipeline(false);
++      }
++    } else if (input === 'f') {
++      if (pipelineStatus === 'idle' || pipelineStatus === 'error') {
++        void runPipeline(true);
++      }
++    } else if (input === 's') {
++      const processes = processStore.getState().processes;
++      for (const pidStr in processes) {
++        const pid = Number(pidStr);
++        const p = processes[pid];
++        if (p?.status === 'running') {
++          processManager.killProcess(pid);
++        }
++      }
++      setPipelineStatus('idle');
++    }
++  });
++};

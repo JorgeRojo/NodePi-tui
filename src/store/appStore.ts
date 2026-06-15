@@ -47,6 +47,7 @@ export interface AppState {
 
   focusedDependencyIndex: number;
   activeModal: 'none' | 'add' | 'config' | 'scripts';
+  pipelineStatus: 'idle' | 'running' | 'error';
 
   // Actions
   setTarget: (target: Partial<AppState['target']>) => void;
@@ -60,6 +61,7 @@ export interface AppState {
   toggleDependencyMode: (name: string) => void;
   removeDependency: (name: string) => void;
   addCustomScript: (script: CustomScript) => void;
+  setPipelineStatus: (status: AppState['pipelineStatus']) => void;
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -113,6 +115,7 @@ export const useAppStore = create<AppState>(set => ({
   customScripts: [],
   focusedDependencyIndex: 0,
   activeModal: 'none',
+  pipelineStatus: 'idle',
 
   setTarget: (target): void =>
     set(
@@ -226,6 +229,7 @@ export const useAppStore = create<AppState>(set => ({
 
       return { customScripts };
     }),
+  setPipelineStatus: (status): void => set({ pipelineStatus: status }),
 }));
 
 // We also need to save when `setDependencies` or adding from modal happens.

@@ -11,11 +11,14 @@ import { LogsPanel } from './components/LogsPanel.js';
 import { ScriptsModal } from './components/ScriptsModal.js';
 import { Sidebar } from './components/Sidebar.js';
 import { TargetPanel } from './components/TargetPanel.js';
+import { useGlobalKeybindings } from './hooks/useGlobalKeybindings.js';
 import { useTerminalSize } from './hooks/useTerminalSize.js';
 
 export const App = (): React.JSX.Element => {
   const { columns, rows } = useTerminalSize();
   const activeModal = useAppStore(state => state.activeModal);
+
+  useGlobalKeybindings();
 
   if (columns < 80 || rows < 24) {
     return (

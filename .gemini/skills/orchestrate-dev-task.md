@@ -33,8 +33,9 @@ Full TypeScript implementation pipeline: read provided PRD → generate PRT (Pro
 - **CRITICAL**: Instruct the subagent that while the provided PRD has the highest priority, the subagent MUST also explore and utilize the full project context, all relevant documentation, and the `.gemini/rules/` of the project to properly calculate and generate the PRT.
 - **CRITICAL**: Instruct the subagent to use the **codegraph MCP tools** to query the codebase and understand dependencies, structures, and existing implementations before writing the PRT.
 - The subagent must save the PRT in the `./DOCS/TASKS/[PRD_NAME]/` directory, and its filename MUST start with `_` (e.g. `_PRT.md`). Create the directory if it doesn't exist.
+- Use the `run_command` tool to execute `open file://<absolute-path-to-prt>` (or `open -a "Google Chrome" <path>` if Google Chrome is preferred) so that the PRT opens automatically in the user's internet browser.
 - **STOP HERE. Ask the user to review the PRT before proceeding.**
-- Wait for user confirmation. Do NOT proceed to Step 3 until the user explicitly confirms.
+- Wait for user confirmation. Do NOT proceed to Step 4 until the user explicitly confirms.
 
 ### Step 4: Analyze, Split & Plan Execution
 
