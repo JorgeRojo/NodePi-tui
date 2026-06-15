@@ -44,7 +44,11 @@ export const App = (): React.JSX.Element => {
   return (
     <Box flexDirection="column" width="100%" height={rows}>
       <Header />
-      <Box flexDirection="row" flexGrow={1}>
+      <Box
+        flexDirection="row"
+        flexGrow={1}
+        display={activeModal !== 'none' ? 'none' : 'flex'}
+      >
         <Box
           flexDirection="column"
           flexGrow={1}
