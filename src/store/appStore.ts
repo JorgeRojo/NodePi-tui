@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { writeConfig } from '../core/config-manager/io.js';
+
 export interface Dependency {
   name: string;
   type: string;
@@ -41,12 +43,20 @@ export interface AppState {
   logs: LogEntry[];
   containerDirs: string[];
 
+  focusedDependencyIndex: number;
+  activeModal: 'none' | 'add' | 'config';
+
   // Actions
   setTarget: (target: Partial<AppState['target']>) => void;
   setDependencies: (deps: Dependency[]) => void;
   setActiveProcesses: (processes: ActiveProcess[]) => void;
   setTimeline: (timeline: TimelineEvent[]) => void;
   addLog: (log: LogEntry) => void;
+  setFocusedDependencyIndex: (index: number) => void;
+  setActiveModal: (modal: 'none' | 'add' | 'config') => void;
+  toggleDependency: (name: string) => void;
+  toggleDependencyMode: (name: string) => void;
+  removeDependency: (name: string) => void;
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -97,6 +107,8 @@ export const useAppStore = create<AppState>(set => ({
     },
   ],
   containerDirs: ['~/projects'],
+  focusedDependencyIndex: 0,
+  activeModal: 'none',
 
   setTarget: (target): void =>
     set(
@@ -107,4 +119,76 @@ export const useAppStore = create<AppState>(set => ({
   setTimeline: (timeline): void => set({ timeline }),
   addLog: (log): void =>
     set((state): Partial<AppState> => ({ logs: [...state.logs, log] })),
+  setFocusedDependencyIndex: (index): void =>
+    set({ focusedDependencyIndex: index }),
+  setActiveModal: (modal): void => set({ activeModal: modal }),
+  toggleDependency: (name): void =>
+    set((state): Partial<AppState> => {
+      const dependencies = state.dependencies.map(dep =>
+        dep.name === name ? { ...dep, enabled: !dep.enabled } : dep
+      );
+      const depsRecord: Record<string, any> = {};
+      dependencies.forEach(d => {
+        depsRecord[d.name] = {
+          type: d.type,
+          enabled: d.enabled,
+          version: d.version,
+          path: d.path,
+        };
+      });
+      void writeConfig(state.target.cwd, {
+        containers: state.containerDirs,
+        dependencies: depsRecord,
+      });
+      return { dependencies };
+    }),
+  toggleDependencyMode: (name): void =>
+    set((state): Partial<AppState> => {
+      const dependencies = state.dependencies.map(dep =>
+        dep.name === name
+          ? { ...dep, type: dep.type === 'Sync' ? 'Inject' : 'Sync' }
+          : dep
+      );
+      const depsRecord: Record<string, any> = {};
+      dependencies.forEach(d => {
+        depsRecord[d.name] = {
+          type: d.type,
+          enabled: d.enabled,
+          version: d.version,
+          path: d.path,
+        };
+      });
+      void writeConfig(state.target.cwd, {
+        containers: state.containerDirs,
+        dependencies: depsRecord,
+      });
+      return { dependencies };
+    }),
+  removeDependency: (name): void =>
+    set((state): Partial<AppState> => {
+      const dependencies = state.dependencies.filter(dep => dep.name !== name);
+      const depsRecord: Record<string, any> = {};
+      dependencies.forEach(d => {
+        depsRecord[d.name] = {
+          type: d.type,
+          enabled: d.enabled,
+          version: d.version,
+          path: d.path,
+        };
+      });
+      void writeConfig(state.target.cwd, {
+        containers: state.containerDirs,
+        dependencies: depsRecord,
+      });
+      return {
+        dependencies,
+        focusedDependencyIndex: Math.max(
+          0,
+          Math.min(state.focusedDependencyIndex, dependencies.length - 1)
+        ),
+      };
+    }),
 }));
+
+// We also need to save when `setDependencies` or adding from modal happens.
+// Subscribe to store changes manually or add it to setDependencies.

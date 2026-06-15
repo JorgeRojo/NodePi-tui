@@ -5,8 +5,8 @@ import { render } from 'ink-testing-library';
 import { DependencyList } from '../DependencyList.js';
 
 vi.mock('../../../store/appStore.js', () => ({
-  useAppStore: (selector: any) =>
-    selector({
+  useAppStore: vi.fn((selector?: any) => {
+    const state = {
       dependencies: [
         {
           name: 'dep-a',
@@ -23,7 +23,21 @@ vi.mock('../../../store/appStore.js', () => ({
           enabled: false,
         },
       ],
-    }),
+      focusedDependencyIndex: 0,
+      activeModal: 'none',
+      setTarget: vi.fn(),
+      setDependencies: vi.fn(),
+      setActiveProcesses: vi.fn(),
+      setTimeline: vi.fn(),
+      addLog: vi.fn(),
+      setFocusedDependencyIndex: vi.fn(),
+      setActiveModal: vi.fn(),
+      toggleDependency: vi.fn(),
+      toggleDependencyMode: vi.fn(),
+      removeDependency: vi.fn(),
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 describe('DependencyList', () => {

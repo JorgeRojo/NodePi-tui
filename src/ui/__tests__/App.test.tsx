@@ -12,8 +12,8 @@ vi.mock('../hooks/useTerminalSize.js', () => ({
 
 // Mock the store to avoid useSyncExternalStore issues during tests with ink-testing-library
 vi.mock('../../store/appStore.js', () => ({
-  useAppStore: vi.fn((selector: any) =>
-    selector({
+  useAppStore: vi.fn((selector?: any) => {
+    const state = {
       target: {
         name: 'mi-app',
         branch: 'main',
@@ -26,8 +26,21 @@ vi.mock('../../store/appStore.js', () => ({
       timeline: [],
       logs: [],
       containerDirs: [],
-    })
-  ),
+      focusedDependencyIndex: 0,
+      activeModal: 'none',
+      setTarget: vi.fn(),
+      setDependencies: vi.fn(),
+      setActiveProcesses: vi.fn(),
+      setTimeline: vi.fn(),
+      addLog: vi.fn(),
+      setFocusedDependencyIndex: vi.fn(),
+      setActiveModal: vi.fn(),
+      toggleDependency: vi.fn(),
+      toggleDependencyMode: vi.fn(),
+      removeDependency: vi.fn(),
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 describe('App Component', (): void => {

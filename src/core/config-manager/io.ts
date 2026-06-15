@@ -25,7 +25,7 @@ export const readConfig = async (basePath: string): Promise<NodePiConfig> => {
       return defaultTemplate;
     }
 
-    const { containers } = parsed as Record<string, unknown>;
+    const { containers, dependencies } = parsed as Record<string, unknown>;
 
     if (!Array.isArray(containers)) {
       return defaultTemplate;
@@ -34,7 +34,13 @@ export const readConfig = async (basePath: string): Promise<NodePiConfig> => {
     const validContainers = containers.filter(
       (c): c is string => typeof c === 'string'
     );
-    return { containers: validContainers };
+
+    const validDependencies =
+      dependencies && typeof dependencies === 'object'
+        ? (dependencies as NodePiConfig['dependencies'])
+        : undefined;
+
+    return { containers: validContainers, dependencies: validDependencies };
   } catch (error: unknown) {
     if (
       error instanceof Error &&

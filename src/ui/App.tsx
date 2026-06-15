@@ -1,6 +1,9 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
+import { useAppStore } from '../store/appStore.js';
+import { AddDependencyModal } from './components/AddDependencyModal.js';
+import { ConfigModal } from './components/ConfigModal.js';
 import { DependencyList } from './components/DependencyList.js';
 import { Footer } from './components/Footer.js';
 import { Header } from './components/Header.js';
@@ -11,6 +14,7 @@ import { useTerminalSize } from './hooks/useTerminalSize.js';
 
 export const App = (): React.JSX.Element => {
   const { columns, rows } = useTerminalSize();
+  const activeModal = useAppStore(state => state.activeModal);
 
   if (columns < 80 || rows < 24) {
     return (
@@ -53,6 +57,8 @@ export const App = (): React.JSX.Element => {
         )}
       </Box>
       <Footer />
+      {activeModal === 'add' && <AddDependencyModal />}
+      {activeModal === 'config' && <ConfigModal />}
     </Box>
   );
 };

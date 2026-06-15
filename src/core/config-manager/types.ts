@@ -1,5 +1,9 @@
 export interface NodePiConfig {
   containers: string[];
+  dependencies?: Record<
+    string,
+    { type: string; enabled: boolean; version?: string; path?: string }
+  >;
 }
 
 export interface PackageMetadata {
