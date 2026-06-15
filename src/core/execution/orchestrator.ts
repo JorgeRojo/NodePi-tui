@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import { useAppStore } from '../../store/appStore.js';
+import { backupTarget } from '../backupManager.js';
 import { sortTopologically } from '../config-manager/sorter.js';
 import type { PackageMetadata } from '../config-manager/types.js';
 import { isCacheValid, updateCache } from './cache.js';
@@ -63,6 +64,8 @@ export async function runPipeline(force: boolean = false): Promise<void> {
 
     // Target Install
     await execa('pnpm', ['install'], { cwd: store.target.cwd });
+
+    await backupTarget(store.target.cwd, sortedDependencies.map(d => d.name));
 
     // Inject Phase
     const injectDeps = sortedDependencies.filter(d => d.type === 'Inject');

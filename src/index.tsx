@@ -6,8 +6,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
+import { restoreTargetSync } from './core/backupManager.js';
+import { processManager } from './core/execution/ProcessManager.js';
 import { logger } from './core/logger.js';
 import { runPreflightValidations } from './core/validators/index.js';
+import { processStore } from './store/processStore.js';
 import { App } from './ui/App.js';
 
 const { values } = parseArgs({
@@ -51,6 +54,31 @@ if (typeof values.cwd === 'string') {
     process.exit(1);
   }
 }
+
+function handleExit(code: number): never {
+  try {
+    const processes = processStore.getState().processes;
+    Object.values(processes).forEach(proc => {
+      if (proc.status === 'running') {
+        processManager.killProcess(proc.pid);
+      }
+    });
+    restoreTargetSync(process.cwd());
+  } catch (err) {
+    logger.error('Failed to restore backup synchronously: ' + String(err));
+  }
+  process.exit(code);
+}
+
+process.on('SIGINT', () => handleExit(0));
+process.on('SIGTERM', () => handleExit(0));
+process.on('uncaughtException', err => {
+  logger.error(
+    'Uncaught Exception: ' +
+      (err instanceof Error ? err.stack || err.message : String(err))
+  );
+  handleExit(1);
+});
 
 async function bootstrap(): Promise<void> {
   try {

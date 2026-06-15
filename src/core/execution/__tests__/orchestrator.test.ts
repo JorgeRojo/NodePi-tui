@@ -3,6 +3,7 @@ import { execa } from 'execa';
 import fs from 'fs/promises';
 
 import { useAppStore } from '../../../store/appStore.js';
+import { backupTarget } from '../../backupManager.js';
 import { isCacheValid, updateCache } from '../cache.js';
 import { runPipeline } from '../orchestrator.js';
 import { processManager } from '../ProcessManager.js';
@@ -13,6 +14,7 @@ vi.mock('fs/promises');
 vi.mock('execa');
 vi.mock('../cache.js');
 vi.mock('../viteWrapper.js');
+vi.mock('../../backupManager.js');
 
 vi.mock('../../../store/appStore.js', () => {
   const mockGetState = vi.fn();
@@ -140,6 +142,9 @@ describe('runPipeline', () => {
     expect(execa).toHaveBeenCalledWith('pnpm', ['install'], {
       cwd: '/mock/target',
     });
+
+    // Backup target
+    expect(backupTarget).toHaveBeenCalledWith('/mock/target', ['depA', 'depB']);
 
     // Inject wrapper
     expect(injectViteWrapper).toHaveBeenCalledWith('/mock/target');
