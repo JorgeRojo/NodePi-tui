@@ -21,7 +21,7 @@ mkdir -p "$TEMP_DIR"
 mkdir -p "$DIST_DIR"
 
 echo "📦 Bundling app with esbuild..."
-npx esbuild src/index.tsx --bundle --platform=node --format=cjs --banner:js="var _a;" --outfile="$DIST_DIR/bundle.js"
+npx esbuild src/index.ts --bundle --platform=node --format=cjs --banner:js="var _a;" --outfile="$DIST_DIR/bundle.js"
 
 echo "⚙️  Creating SEA config..."
 cat <<EOF > sea-config.json

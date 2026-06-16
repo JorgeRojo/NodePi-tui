@@ -18,10 +18,9 @@ Both modes operate directly inside the target's real `node_modules` folder:
    - On change, uses `rsync` to atomically copy the changes directly into the target's `node_modules/.pnpm/...` location.
    - Generates a temporary `.nodepi/vite.wrapper.ts` that imports the user's real Vite config, adding `optimizeDeps.exclude` and un-ignoring the `node_modules` folder for `server.watch.ignored`.
 
-### 2. Pre-flight & Heuristics (With AI Fallback)
-
-1. **Fast Path**: Resolving build output directories and scripts relies on parsing `package.json` (`main`, `exports`, `scripts`) and `tsconfig.json` (`outDir`).
-2. **AI Fallback**: If a package is extremely legacy or complex, the CLI spawns a background `execa` call to `agy` (Antigravity AI) to dynamically analyze the package and return the correct scripts and paths in JSON format.
+### 2. Pre-flight & AI-Driven Script Resolution
+Instead of relying on fragile string-matching heuristics or asking the user for build scripts, NodePi delegates 100% of the build-toolchain analysis to AI. 
+After the user selects the operation mode (Sync or Inject), the CLI bundles all relevant `package.json` files and executes a single background call to `agy`. `agy` returns a standardized JSON object mapping each dependency to its correct `watch`/`build` script and its compiled output directory (e.g., `dist`).
 
 ### 3. Clean-up & Exit Resiliency
 
@@ -47,8 +46,9 @@ graph TD
 
 ## 🛠️ Implementation Phases
 
-1. **Phase 1: Foundation**: Setup `clack/prompts`, implement system preflight checks, and global/local `.nodepirc` parsing.
-2. **Phase 2: The Wizard**: Build the interactive prompt flow (Select packages -> Select Modes -> Select Scripts).
-3. **Phase 3: The Engine**: Implement the backup/restore logic, `pnpm` injection modification, and the `.nodepi/vite.wrapper.ts` generator.
-4. **Phase 4: Orchestration**: Implement `chokidar` + `rsync` sync loop, background compiler spawning, and Vite dev server launching.
-5. **Phase 5: Exit Handlers**: Ensure bulletproof `SIGINT` trapping to leave the workspace pristine.
+1. **Phase 1: Foundation**: Setup `clack/prompts`, implement system preflight checks, and global `.nodepirc` parsing.
+2. **Phase 2: The Wizard**: Build the interactive prompt flow (Select packages -> Multi-Dependency Discovery -> Git Guard -> Select Mode).
+3. **Phase 3: The AI Engine**: Implement the prompt builder for `agy` and parse the JSON response to extract scripts and directories.
+4. **Phase 4: Execution Engine**: Implement the backup/restore logic, `pnpm` injection, and the `.nodepi/vite.wrapper.ts` generator.
+5. **Phase 5: Orchestration**: Implement `chokidar` + `rsync` sync loop and spawn AI-discovered compilers. The tool runs purely as a synchronization engine.
+6. **Phase 6: Exit Handlers**: Ensure bulletproof `SIGINT` trapping to leave the workspace pristine.

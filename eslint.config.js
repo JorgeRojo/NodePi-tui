@@ -1,8 +1,6 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import { fixupConfigRules } from '@eslint/compat';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import importPlugin from 'eslint-plugin-import-x';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
@@ -15,10 +13,8 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...fixupConfigRules([
     {
-      files: ['**/*.{ts,tsx}'],
+      files: ['**/*.ts'],
       plugins: {
-        react: reactPlugin,
-        'react-hooks': reactHooksPlugin,
         import: importPlugin,
         'import-x': importPlugin,
       },
@@ -40,20 +36,17 @@ export default tseslint.config(
         ],
       },
       rules: {
-        ...reactPlugin.configs.recommended.rules,
-        ...reactHooksPlugin.configs.recommended.rules,
         ...importPlugin.configs.recommended.rules,
       },
     },
   ]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['**/*.ts'],
     plugins: {
       'simple-import-sort': simpleImportSort,
       'unused-imports': unusedImports,
     },
     settings: {
-      react: { version: 'detect' },
       'import/resolver-next': [
         createTypeScriptImportResolver({
           alwaysTryTypes: true,
@@ -69,7 +62,7 @@ export default tseslint.config(
     },
     rules: {
       // General
-      'no-console': 'warn',
+      'no-console': 'off',
       'no-unused-expressions': 'off',
       'padded-blocks': 'off',
       'no-tabs': 'off',
@@ -104,15 +97,12 @@ export default tseslint.config(
         },
       ],
 
-      // React compatibility
-      'react/react-in-jsx-scope': 'off',
-
       // Import sort
       'simple-import-sort/imports': [
         'error',
         {
           groups: [
-            ['^react', '^vitest', '^ink', '^@?\\w'],
+            ['^vitest', '^@?\\w'],
             ['^src/'],
             ['^\\.\\./', '^\\./', '\\./[A-Z]', '^\\.'],
           ],
@@ -125,7 +115,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/__tests__/**/*.{ts,tsx}', '**/*.{spec,test}.{ts,tsx}'],
+    files: ['**/__tests__/**/*.ts', '**/*.{spec,test}.ts'],
     rules: {
       'unused-imports/no-unused-vars': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',

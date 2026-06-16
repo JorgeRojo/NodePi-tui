@@ -29,28 +29,32 @@ The wizard starts by quietly checking system requirements (`pnpm`, `rsync`, `Vit
 │  [✓] Vite configuration detected
 ```
 
-### Step 2: Dependency Selection
+### Step 2: Dependency Selection & Auto-Discovery
 
-A multi-select prompt allows the user to choose which local packages to link.
+A multi-select prompt allows the user to choose which local packages to link. If a transitive package is selected, the CLI automatically finds and includes intermediate local packages.
 
 ```text
 │
 ◇  Which local dependencies do you want to link?
 │  [x] lib-core (v1.0.0) - ~/projects/lib-core
 │  [ ] lib-ui   (v2.1.0) - ~/projects/lib-ui
-│  [x] api-sdk  (v0.5.0) - ~/projects/api-sdk
 │
+◇  Auto-discovered intermediate dependencies:
+│  [✓] api-sdk added automatically because lib-core depends on it.
 ```
 
-### Step 3: Mode Configuration
+### Step 3: Git Guard & Mode Configuration
 
-For each selected dependency, the user selects the mode of operation.
+The CLI checks the Git status of all selected packages. If any are behind remote, it throws a blocking error. Otherwise, the user selects the mode.
 
 ```text
 │
-◇  Select mode for lib-core:
-│  ● Sync (Live watching & automatic HMR)
-│  ○ Inject (Static one-time copy)
+◇  Validating Git status for selected packages...
+│  [✓] lib-core [branch: main] - Up to date
+│  [✗] api-sdk  [branch: feature/auth] - ⚠️ Behind origin by 2 commits
+│
+🛑 Error: 'api-sdk' is missing remote changes.
+   Please run 'git pull' in ~/projects/api-sdk before continuing.
 ```
 
 ### Step 4: Script Selection
