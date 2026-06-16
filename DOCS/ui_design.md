@@ -1,217 +1,98 @@
-# UI/UX Presentation & Layout Specifications: NodePi TUI
+# UI/UX Presentation Specifications: NodePi CLI Wizard
 
-To deliver a premium, modern developer experience in the terminal, the NodePi TUI (`nodepi`) is built using **React + Ink** and styled with **Chalk**. It utilizes the **Yoga** Flexbox engine to render a responsive grid layout.
-
-This document defines the visual aesthetics, screen wireframes, color systems, and interactive behaviors of the TUI.
+To deliver a premium, modern developer experience in the terminal, NodePi utilizes a Step-by-Step CLI Wizard powered by **@clack/prompts**. This approach removes the complexity of rendering a responsive grid layout while maintaining an elegant, focused user flow.
 
 ---
 
-## 1. Visual Aesthetics & Design System
+## 1. Visual Aesthetics
 
-The visual design is inspired by modern terminal themes (e.g., Catppuccin Macchiato / Nord) to ensure high readability and a cohesive, state-of-the-art look.
+- **Clean Typography**: Uses standard terminal fonts but leverages bolding and dimming to create visual hierarchy.
+- **Color Palette**:
+  - **Success/Completion**: Green
+  - **Focus/Action**: Cyan/Blue
+  - **Error/Abort**: Red
+  - **Warnings/Metadata**: Yellow/Gray
 
-### 1.1 Color Palette
+## 2. Interactive Step-by-Step Flow
 
-- **Background (Default)**: Terminals default background.
-- **Primary Accent (Focus/Selection)**: Sapphire Blue (`#8ab4f8` / Chalk `blueBright`) for selected lists, cursors, and active headers.
-- **Success (Running/Active)**: Emerald Green (`#a6e3a1` / Chalk `green`) for `[RUNNING]` processes, `[Enabled]` dependencies, and successful checks.
-- **Warning (Attention/Alert)**: Amber Yellow (`#f9e2af` / Chalk `yellow`) for warnings, pending steps, or cached operations.
-- **Danger (Error/Stopped)**: Coral Red (`#f38ba8` / Chalk `red`) for `[FAILED]` or `[STOPPED]` processes, validation errors, and exit signals.
-- **Muted (Metadata/Paths)**: Cool Gray (`#6e738d` / Chalk `gray`) for paths, PIDs, version tags, and inactive states.
+### Step 1: Preflight & Startup
 
-### 1.2 Borders & Panels
-
-Panels are visually separated using Unicode box-drawing characters for rounded borders (`╭ ╮ ╯ ╰ ─ │`).
-
-- Active panels (possessing key focus) are rendered with **sapphire blue** borders.
-- Inactive panels are rendered with **dim gray** borders.
-- Error messages or critical alerts are rendered with **coral red** borders.
-
----
-
-## 2. Layout & Wireframes
-
-The TUI maintains a layout that adapts dynamically to the terminal window dimensions.
-
-### 2.1 Screen 1: Startup Validation & Checks
-
-Displayed at launch, this screen validates system requirements in a clean, animated step-by-step list.
+The wizard starts by quietly checking system requirements (`pnpm`, `rsync`, `Vite`, `agy`). If anything is missing, the wizard aborts with a clear error.
 
 ```text
-╭────────────────────────────────────────────────────────────────────────╮
-│  NodePi v1.0.0 - Startup Checks                                        │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  [✓] Step 1: System Dependencies                                       │
-│      - node (Found)                                                    │
-│      - rsync (Found)                                                   │
-│      - git (Found)                                                     │
-│      - pnpm (Found)                                                    │
-│      - crypto (Native)                                                 │
-│      - chokidar (Native)                                               │
-│                                                                        │
-│  [✓] Step 2: Global Configuration                                      │
-│      - Container directory configured: ~/projects                      │
-│                                                                        │
-│  [...] Step 3: Target Project Validation                               │
-│      - package.json (Found)                                            │
-│      - vite.config.ts (Checking...)                                    │
-│                                                                        │
-╰────────────────────────────────────────────────────────────────────────╯
+│
+◇  NodePi v1.0.0
+│
+◇  Validating system requirements...
+│  [✓] pnpm found
+│  [✓] rsync found
+│  [✓] Vite configuration detected
 ```
 
-- **Error State**: If any check fails, the checking stops, the border turns red, and a corrective action box is rendered at the bottom:
-  ```text
-  ╭────────────────────────────────────────────────────────────────────────╮
-  │  [✗] Step 1: System Dependencies                                       │
-  │      - rsync (NOT FOUND)                                               │
-  ├────────────────────────────────────────────────────────────────────────┤
-  │  CRITICAL ERROR: rsync is required for Synchronization Mode.           │
-  │                                                                        │
-  │  Corrective Action:                                                    │
-  │  Please install rsync via: brew install rsync                          │
-  │                                                                        │
-  │  [Press Q to quit]                                                     │
-  ╰────────────────────────────────────────────────────────────────────────╯
-  ```
+### Step 2: Dependency Selection
 
----
-
-### 2.2 Screen 2: Main Dashboard (Dual-Column Responsive Grid)
-
-When terminal width is **>= 100 columns**, the UI renders in a side-by-side split layout:
-
-- **Left Column (70% width)**: Main Target Info, Dependencies List Table, and Console Logs.
-- **Right Column (30% width - Fixed)**: Active Processes and Dependency Timeline.
+A multi-select prompt allows the user to choose which local packages to link.
 
 ```text
-NodePi v1.0.0
-╭─ Target: mi-app [main] ─────────────────────╮╭─ Active Processes ────────────────╮
-│  Version: v2.1.0                            ││  [● DEV] mi-app (PID: 43291)      │
-│  Selected Dev Script: pnpm run dev          ││  [● WATCH] lib-a (PID: 43295)      │
-╰─────────────────────────────────────────────╯│  [● SYNC] lib-a (PID: 43296)       │
-╭─ Local Dependencies ────────────────────────╮│                                   │
-│  ▶ [Enabled]  lib-a  (Sync)  v1.0.2  ~/lib-a │╰───────────────────────────────────╯
-│    [Disabled] lib-b (Inject) v2.0.0  ~/lib-b │╭─ Dependency Timeline ─────────────╮
-│                                             ││  ■ mi-app (Target CWD)            │
-│  [a] Add Dep  [t] Toggle  [m] Mode  [x] Del ││  ▲                                 │
-╰─────────────────────────────────────────────╯│  │  v1.0.2                         │
-╭─ Console Logs ──────────────────────────────╮│  ● lib-a (Sync)                    │
-│ ▍ [lib-a] [watch] tsc --watch               ││  ▲                                 │
-│ ▍ [lib-a] [watch] TypeScript compilation ok ││  │  v2.0.0                         │
-│ ▍ [mi-app] [dev] Vite server running on port││  ● lib-b (Inject)                  │
-│                                             │╰───────────────────────────────────╯
-│                                             │╭─ Container Directories ────────────╮
-│                                             ││  ~/projects                        │
-│                                             │╰───────────────────────────────────╯
-╰─────────────────────────────────────────────╯
-CWD: ~/projects/mi-app | Branch: main
-[r] Run  [f] Force Run  [s] Stop  [a] Add Dep  [c] Config  [q] Quit
+│
+◇  Which local dependencies do you want to link?
+│  [x] lib-core (v1.0.0) - ~/projects/lib-core
+│  [ ] lib-ui   (v2.1.0) - ~/projects/lib-ui
+│  [x] api-sdk  (v0.5.0) - ~/projects/api-sdk
+│
 ```
 
-#### Responsive Collapse (Width < 100 columns)
+### Step 3: Mode Configuration
 
-If the terminal window width falls between **80 and 99 columns**, the **Right Column** (Active Processes & Timeline) is automatically hidden. The Left Column automatically stretches to take 100% of the viewport width.
-
-#### Window Size Warning (Dimensions < 80x24)
-
-If the terminal size drops below **80 columns** or **24 rows** at any point (monitored via live resize listener), the dashboard is paused and the terminal renders this centered block:
+For each selected dependency, the user selects the mode of operation.
 
 ```text
-⚠️ Terminal too small!
-Current: 75x20 | Required: >= 80x24
-Please resize your terminal window to resume.
+│
+◇  Select mode for lib-core:
+│  ● Sync (Live watching & automatic HMR)
+│  ○ Inject (Static one-time copy)
 ```
 
----
+### Step 4: Script Selection
 
-### 2.3 Screen 3: Interactive Script Selector (Modal Overlay)
-
-When target or dependency scripts are not yet configured in `.nodepirc.json`, the dashboard is dimmed and a centered modal box appears.
+The wizard auto-detects scripts from `package.json`. If it's unclear, it either uses `agy` (AI Fallback) or prompts the user.
 
 ```text
-╭────────────────────────────────────────────────────────────────────────╮
-│  Configure Scripts: lib-a (Role: Injectable Dependency)                │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  Select Build/Compile Script (Required):                               │
-│  This script will run sequentially to compile TypeScript/JS assets.    │
-│                                                                        │
-│    ▶  build (tsc && vite build)                                        │
-│       compile (tsc)                                                    │
-│       build:dist                                                       │
-│       [Skip / None]                                                    │
-│                                                                        │
-│  Use ↑/↓ keys to navigate, press Enter to select                       │
-╰────────────────────────────────────────────────────────────────────────╯
+│
+◇  Select the watch script for lib-core:
+│  ● build:watch (tsc --watch)
+│  ○ dev
+│  ○ None
 ```
 
-Once a script is selected, it transitions smoothly to the next slot (e.g. _Watch Compiler Script_, then _Clean Script_). If all required scripts are set, the configuration is saved, the modal closes, and the dashboard resumes.
+### Step 5: Execution & Orchestration
 
----
-
-### 2.4 Screen 4: Add/Discover Dependency Screen
-
-When pressing **`[a]`** (Add Dependency) from the dashboard, a fullscreen searchable fuzzy-finder interface is shown.
+Once configuration is complete, the wizard transitions into the execution phase. A spinner indicates progress for sequential tasks.
 
 ```text
-╭────────────────────────────────────────────────────────────────────────╮
-│  Add Local Dependency - Search                                         │
-├────────────────────────────────────────────────────────────────────────┤
-│  Search: lib_                                                          │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ▶  lib-a  (v1.0.2)  ~/projects/lib-a                                  │
-│     lib-b  (v2.0.0)  ~/projects/lib-b                                  │
-│     library-utils  (v0.1.2)  ~/projects/shared/library-utils           │
-│                                                                        │
-│  Showing 3 of 12 packages found in container directories.             │
-│  Type to search, press Enter to select, Esc to cancel.                 │
-╰────────────────────────────────────────────────────────────────────────╯
+│
+◇  Bootstrapping environment...
+│  [✓] Backing up original package.json and node_modules
+│  [✓] Injecting dependencies via pnpm
+│  [✓] Generating Vite HMR wrapper
+│
+◇  Starting background processes...
+│  ▍ [lib-core] watch compiler started
+│  ▍ [lib-core] rsync watcher active
+│
+◇  Ready! Starting target dev server...
 ```
 
-- **Fuzzy Typing**: The search input line is editable. Typing updates the filtered list of local packages in real-time.
-- **Topological Chain Detection**: Selecting a dependency instantly triggers a dependency graph scan. If intermediate packages are discovered, the TUI displays a brief transition screen listing them:
-  ```text
-  ╭────────────────────────────────────────────────────────────────────────╮
-  │  Intermediate Dependencies Detected!                                   │
-  ├────────────────────────────────────────────────────────────────────────┤
-  │                                                                        │
-  │  Selecting "lib-b" requires the following local packages:              │
-  │  - lib-a (Intermediate dependency of lib-b)                             │
-  │                                                                        │
-  │  [✓] These packages will be automatically added to your workspace.     │
-  │                                                                        │
-  │  Press Enter to confirm, Esc to abort.                                 │
-  ╰────────────────────────────────────────────────────────────────────────╯
-  ```
+### Step 6: Live Logs & Restoration
 
----
+Once the dev server starts, standard stdout/stderr is streamed to the console. When the user presses `Ctrl+C`, the CLI catches the exit signal and restores the environment cleanly.
 
-## 3. Keyboard & Interaction Design
-
-A premium TUI relies on fast, fluid keyboard-driven flows. The application implements the following controls:
-
-- **Focus Ring**: Only one UI list is active at a time. The active panel is denoted by a bright blue border and cursor arrows (`▶`).
-- **Workspace Actions (Footer Hotkeys)**:
-  - `[r]`: Start/Run the entire environment pipeline.
-  - `[f]`: Force Run (resetting caches and rebuild/reinstall everything).
-  - `[s]`: Stop all active watch/dev server processes.
-  - `[a]`: Open the Add Dependency screen.
-  - `[c]`: Open script re-configuration modal for the focused package.
-  - `[q]`: Run exit/restore script and quit the program.
-- **Modal Interception**: Opening a modal (such as script selection or dependency addition) blocks global key listeners (e.g. `[r]` or `[q]`), capturing keyboard input exclusively. Pressing `Esc` inside a modal safely cancels the current flow and restores dashboard focus.
-
----
-
-## 4. Console Logs High-Fidelity Output Rendering
-
-To meet the requirement that the script outputs look exactly as they would when executed standalone, the Console Logs Panel rendering implements PTY stream mechanics.
-
-For explicit instructions on `script -q /dev/null` wrappers, environment variables, and `\r` parsing, refer to `.gemini/rules/architecture-ink.md`.
-
-### 4.1 Visual Output Fidelity Specs
-
-- **ANSI Escape Color Preservation**: All ANSI SGR codes (formatting, colors, bolding, underline) produced by compilation engines, testing frameworks, and compilers must be passed transparently. The text container will parse these codes using Chalk/custom ANSI react wrappers.
-- **Log Buffer Limits & Scrolling**: A rolling window buffer stores up to 500 lines of log history to optimize React re-rendering performance. Vertical scrollbars are provided, allowing full navigation through previous compile histories using the mouse wheel.
-- **Process Color Coding (Left Bar)**: Each spawned process (compilers, sync watchers, dev server) is automatically assigned a unique, distinct color. Every line of output generated by that process is prefixed with a solid vertical bar (e.g., `▍`) painted in the assigned color. This ensures that intertwined logs from parallel processes are instantly distinguishable at a glance.
+```text
+^C
+│
+◇  Gracefully shutting down...
+│  [✓] Stopping background watchers
+│  [✓] Restoring original package.json and node_modules
+│
+◇  Workspace restored. Goodbye!
+```

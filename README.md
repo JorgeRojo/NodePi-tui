@@ -1,77 +1,51 @@
-# NodePi TUI (`nodepi`)
+# NodePi (`nodepi`)
 
-`nodepi` is the Terminal User Interface (TUI) version of **node-package-injector**. It is a development tool designed to simulate and synchronize local npm dependencies physically within target projects. It avoids traditional symlinks and complex monorepo structures by leveraging **pnpm**'s native `"injected": true` mechanism.
+`nodepi` is an interactive CLI wizard for **node-package-injector**. It is a development tool designed to seamlessly simulate and synchronize local npm dependencies physically within target projects. It completely bypasses the fragility of traditional symlinks (`npm link` / `pnpm link`) and the overhead of complex monorepo structures by leveraging **pnpm** and smart file synchronization.
 
 ---
 
 ## 🚀 Key Features
 
-1. **Automatic Context (CWD)**: The target project is automatically defined by the current working directory (`process.cwd()`) from which the `nodepi` command is executed.
-2. **Static Startup Validation**: Upon startup, the TUI checks system tools and validates that the CWD is a Node.js + Vite project (verifying the existence of `package.json` and `vite.config.*`). **No project scripts or commands are executed in this phase**.
-3. **Real-Time Dependency Resolution**: When adding a local package, the engine immediately and recursively calculates the entire chain of local intermediate dependencies, automatically updating the active configuration.
-4. **Smart Script Engine**: Optimizes startup by avoiding redundant installations (`pnpm install`) and compilations (`build`) if no file changes are detected (by comparing hashes of `package.json` and source code).
-5. **Vite Cache Busting**: Physically deletes the Vite pre-bundling cache (`node_modules/.vite`) on startup, forcing Vite to rebuild its cache and pick up local dependency updates instantly.
-6. **Automatic Watch Compilers**: If a dependency in Synchronization mode defines a watch/dev script in its `package.json`, the TUI runs it in the background to compile TypeScript source files on the fly.
-7. **Instant Clean Restoration**: Backs up `node_modules/<dep>`, `package.json`, and `pnpm-lock.yaml` of the target project on start. Upon exit, it performs a direct physical restoration, **avoiding the need to run a slow `pnpm install` command to clean up the workspace**.
-8. **Process Resiliency**: Actively listens to system exit signals (`SIGINT`, `SIGTERM`, `exit`) to ensure all background watcher/compiler processes are killed and the workspace is restored.
+1. **Interactive CLI Wizard**: A step-by-step terminal interface that guides you through selecting dependencies, choosing injection or sync modes, and starting the development environment. No complex flags or configurations required.
+2. **True `node_modules` Fidelity**: Both "Inject" and "Sync" modes operate physically within the target project's real `node_modules` folder. Your IDE, linters, and bundlers see your dependencies exactly as if they were normally installed.
+3. **Smart Synchronization (Sync Mode)**: Uses `chokidar` and `rsync` to instantly sync your local package changes directly into the virtual store of `node_modules`. It uses atomic replacements to safely break `pnpm`'s global hard-links without corrupting your machine's global cache.
+4. **Zero-Config Vite HMR**: Automatically forces Vite to Hot-Reload changes occurring inside `node_modules`. It does this by generating a dynamic, temporary `vite.wrapper.ts` configuration, leaving your original `vite.config.ts` and `package.json` scripts completely untouched.
+5. **Native pnpm Injection (Inject Mode)**: For static dependencies, it leverages `pnpm`'s native `"injected": true` mechanism for a fast, one-time physical copy.
+6. **Heuristics & AI Fallback**: Uses ultra-fast static analysis on `package.json` and `tsconfig.json` to resolve build scripts and output folders. For legacy or obscure packages, it falls back to `agy` (Antigravity AI) for intelligent programmatic resolution.
+7. **Clean Restoration**: Backs up your `package.json`, `pnpm-lock.yaml`, and `node_modules` on start. Upon graceful exit (Ctrl+C), it performs a pristine restoration, leaving your workspace perfectly clean.
 
 ---
 
-## 🎨 User Interface Layout
+## 🏗️ Architecture & Workflows
 
-The TUI is structured into the following panels:
+### The CLI Flow
 
-- **Header**: Fixed top bar displaying the application name and version (e.g., `NodePi v1.0.0`).
-- **Main Area (Left)**:
-  - **Target Panel**: Active target project details and selected development script.
-  - **Dependencies Panel**: Interactive dependency list (`[t]` toggle status, `[m]` toggle mode, `[x]` remove).
-  - **Console Logs Panel**: Real-time stdout/stderr streams from compilers, `rsync`, and Vite dev server, featuring mouse-scroll support.
-- **Fixed Sidebar (Right)**: Static side panel (no scroll) displaying:
-  - **Active Processes**: List of all parallel running subprocesses (dev server, rsync watches, dependency compilers) and their PIDs. If none are active, it shows "Idle".
+1. **Preflight**: Validates the Node.js + Vite environment and checks for system dependencies (`rsync`, `pnpm`, and optionally `agy`).
+2. **Selection**: Interactive prompts ask which local packages to link (scanned from globally configured paths).
+3. **Mode Configuration**: The user chooses between **Sync** (live file watching + background compilation) or **Inject** (static copy) for each package.
+4. **Script Selection**: The tool automatically detects background watch scripts for dependencies and dev scripts for the target project.
+5. **Execution & Orchestration**: The wizard spins up background compilers, file watchers, and the main Vite dev server securely.
 
-  - **Dependency Timeline**: Vertical, inverted timeline displaying the target project at the top, fed by dependencies from the bottom:
-    ```text
-    ■ mi-app (Target CWD)
-    ▲
-    │  v2.0.0
-    ● lib-b (Inject)
-    ▲
-    │  v1.0.2
-    ● lib-a (Sync)
-    ```
-  - **Container Directories**: Configured global search paths (e.g., `~/projects`).
+### The "Sync + Vite HMR" Magic
 
-- **Footer**:
-  - **Status Bar (Fixed)**: Bottom bar displaying the target CWD (formatted with `~/`) and active Git branch.
-  - **Command Bar**: Quick keyboard shortcuts (`[r]` Run, `[f]` Force Run, `[s]` Stop, `[a]` Add Dep, `[c]` Config, `[q]` Quit).
+Getting Vite to perform Hot Module Replacement on files inside `node_modules` is notoriously difficult. `nodepi` solves this elegantly:
+
+- Watches your local dependency source folder.
+- On change, `rsync` copies the package (excluding `node_modules` and `.git`) directly into the target's `node_modules/.pnpm/...` path.
+- The CLI automatically generates a `.nodepi/vite.wrapper.ts` that imports your real configuration and injects:
+  - `optimizeDeps.exclude: ['tu-paquete']` (Stops Vite from caching it).
+  - `server.watch.ignored: ['!**/node_modules/tu-paquete/**']` (Forces Vite's watcher to look inside node_modules).
+- The CLI launches your project using: `pnpm run dev -- --config .nodepi/vite.wrapper.ts`, keeping your `package.json` free of hacks.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Environment**: Node.js (>= 20.11.0), macOS and Linux natively (bash and zsh).
-- **Language**: TypeScript compiled to ESM.
-- **TUI Engine**: **React + Ink** (using Yoga Flexbox engine for responsive panel distribution).
+- **Environment**: Node.js (>= 20.11.0), macOS and Linux natively.
+- **Interface**: Interactive CLI prompts (e.g., Inquirer.js or Clack).
+- **File Watching**: Native Node.js `chokidar` for zero-CPU polling.
 - **Package Manager**: `pnpm` exclusively.
-- **Sync Utility**: Native `rsync` processes orchestrated via `execa`, with file change detection powered by `chokidar` and integrity hashing via Node.js native `crypto` module.
-
----
-
-## 🔨 Installation & Build
-
-`nodepi` is built as a **Single Executable Application (SEA)** natively compiled for macOS and Linux.
-
-To build and install the binary globally on your system:
-
-```bash
-# 1. Build the binary for your architecture (bundles with esbuild and Node SEA)
-pnpm run build-bin
-
-# 2. Install it globally (copies to ~/.local/bin/nodepi)
-pnpm run install-bin
-```
-
-Once installed, you can simply run `nodepi` from any project directory.
+- **Sync Utility**: Native `rsync` orchestrated via `execa`.
 
 ---
 
@@ -79,3 +53,14 @@ Once installed, you can simply run `nodepi` from any project directory.
 
 - **Workspace Config**: Local `./.nodepirc.json` (can be committed to the target's Git repository to share configurations with other developers).
 - **Global Config**: Global `~/.nodepirc.json` (contains the base search directories located under the user's home folder `~/`).
+
+---
+
+## 📚 Documentation
+
+For an in-depth look at the architecture, design, and technical specifications, refer to the following documents:
+
+- [UI & Interactive Prompts](./DOCS/ui_design.md): Detailed visual layouts and the step-by-step wizard flow.
+- [Implementation Plan](./DOCS/implementation_plan.md): Architectural roadmap and phase-by-phase execution plan.
+- [Technical Specifications](./DOCS/specs.md): Deep dive into orchestration, cache-busting, and background process management.
+- [Technology Stack](./DOCS/tech_stack.md): Rationale behind the libraries and core tooling.
