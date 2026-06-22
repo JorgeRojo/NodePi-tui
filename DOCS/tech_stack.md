@@ -8,14 +8,14 @@ Based on the system requirements (`specs.md`, `implementation_plan.md`) and the 
 
 - **Runtime**: Node.js (>= 20.11.0)
 - **Language**: TypeScript (configured with `NodeNext` for native ESM resolution)
-- **Package Manager**: `pnpm` (exclusively, leveraging its `"injected": true` directive)
+- **Package Manager**: `pnpm` (used only for NodePi's own development; NodePi is **package-manager agnostic** in the target project — it works with Yarn, npm, pnpm, or any PM)
 - **Dev Runner**: `tsx` (TypeScript Execute, runs TS code directly without a prior compilation step during development)
 
 ## 2. CLI Interface & Wizard
 
 Since we want a premium terminal experience but with a step-by-step wizard flow instead of a complex React/Ink grid layout, we rely on modern CLI prompt libraries.
 
-- **Prompt Engine**: [`@clack/prompts`](https://github.com/natemoo-re/clack). Provides a beautiful, cohesive, and modern step-by-step wizard interface out of the box. *(Validated by Context7: High Reputation)*.
+- **Prompt Engine**: [`@clack/prompts`](https://github.com/natemoo-re/clack). Provides a beautiful, cohesive, and modern step-by-step wizard interface out of the box. _(Validated by Context7: High Reputation)_.
 - **Styling and Colors**: `picocolors`. Chosen over `chalk` because it is significantly faster and lighter for rendering status colors.
 - **Progress/Status**: Clack's built-in `spinner` and `log` utilities for elegant status reporting.
 
@@ -24,9 +24,9 @@ Since we want a premium terminal experience but with a step-by-step wizard flow 
 To handle synchronization, compilation, sub-process management, and visual orchestration:
 
 - **Process Execution & Log Streaming**: `execa`
-  - _Why_: Much more powerful and safer than native `child_process`. Automatically handles zombie process cleanup and enables better environment variable injection. *(Validated by Context7: High Reputation, Score: 88.3)*.
+  - _Why_: Much more powerful and safer than native `child_process`. Automatically handles zombie process cleanup and enables better environment variable injection. _(Validated by Context7: High Reputation, Score: 88.3)_.
 - **File Watching**: `chokidar`
-  - _Why_: Efficiently observes dependency source code and intercepts changes to trigger `rsync` directly from TypeScript. *(Validated by Context7: High Reputation, Score: 92.4)*.
+  - _Why_: Efficiently observes dependency source code and intercepts changes to trigger `rsync` directly from TypeScript. _(Validated by Context7: High Reputation, Score: 92.4)_.
 - **Directory Scanning (Container Directories)**: `fast-glob`
   - _Why_: Required to recursively and ultra-fast scan all `package.json` files located within the global working directories.
 - **Vite Integration**: `vite-plugin-commonjs`
@@ -49,8 +49,7 @@ To handle synchronization, compilation, sub-process management, and visual orche
     "execa": "^9.0.0",
     "chokidar": "^3.6.0",
     "fast-glob": "^3.3.0",
-    "vite-plugin-commonjs": "^0.10.1",
-    "listr2": "^8.2.1"
+    "vite-plugin-commonjs": "^0.10.1"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

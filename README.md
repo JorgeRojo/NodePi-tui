@@ -31,11 +31,11 @@
 Getting Vite to perform Hot Module Replacement on files inside `node_modules` is notoriously difficult. `nodepi` solves this elegantly:
 
 - Watches your local dependency source folder.
-- On change, `rsync` copies the package (excluding `node_modules` and `.git`) directly into the target's `node_modules/.pnpm/...` path.
-- The CLI automatically generates a `.nodepi/vite.wrapper.ts` that imports your real configuration and injects:
+- On change, `rsync` copies the package (excluding `node_modules` and `.git`) directly into the target's resolved `node_modules/.pnpm/...` path.
+- The CLI automatically generates a Vite wrapper: it temporarily renames the user's `vite.config.[ext]` to `vite.config.backup.[ext]` and writes a wrapper `vite.config.[ext]` that imports their real config and injects:
   - `optimizeDeps.exclude: ['tu-paquete']` (Stops Vite from caching it).
   - `server.watch.ignored: ['!**/node_modules/tu-paquete/**']` (Forces Vite's watcher to look inside node_modules).
-- The CLI launches your project using: `pnpm run dev -- --config .nodepi/vite.wrapper.ts`, keeping your `package.json` free of hacks.
+- The user runs their project dev server normally in another terminal without modifications. Upon exit, `nodepi` instantly restores the original config file.
 
 ---
 
@@ -64,3 +64,6 @@ For an in-depth look at the architecture, design, and technical specifications, 
 - [Implementation Plan](./DOCS/implementation_plan.md): Architectural roadmap and phase-by-phase execution plan.
 - [Technical Specifications](./DOCS/specs.md): Deep dive into orchestration, cache-busting, and background process management.
 - [Technology Stack](./DOCS/tech_stack.md): Rationale behind the libraries and core tooling.
+- [Caching Strategy](./DOCS/caching_strategy.md): SHA-256 caching validation of configuration files for AI inferences.
+- [Repository Comparison Analysis](./DOCS/repo_comparison_analysis.md): Deep comparison report of 65 local repositories and architectural solutions to subfolder publishing layouts.
+- [Agy Prompt Specification](./DOCS/agy_prompt_specification.md): Spec guidelines for creating structured prompt calls to the AI engine.
