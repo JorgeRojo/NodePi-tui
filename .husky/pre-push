@@ -1,2 +1,2 @@
 pnpm exec tsc --noEmit
-pnpm exec vitest run
+pnpm run test
