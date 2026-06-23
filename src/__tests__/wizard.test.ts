@@ -285,6 +285,7 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
     await runWizard();
 
     // Should abort and call process.exit(1)
+    expect(exitSpy).toHaveBeenCalledTimes(1);
     expect(exitSpy).toHaveBeenCalledWith(1);
     // Should NOT call backup or execution steps
     expect(backupRestoreManager.backup).not.toHaveBeenCalled();
@@ -304,6 +305,7 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
     await runWizard();
 
     // Should abort and call process.exit(1)
+    expect(exitSpy).toHaveBeenCalledTimes(1);
     expect(exitSpy).toHaveBeenCalledWith(1);
     // Should NOT call config loading
     expect(configManager.loadGlobal).not.toHaveBeenCalled();

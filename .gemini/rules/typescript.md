@@ -19,9 +19,14 @@ Enforces strict type safety to eliminate runtime errors, specifically tailored f
 - **Naming Conventions**:
   - Private properties/methods: Prefix with underscore.
   - State mutation functions: Use verbs indicating mutation.
+  - Suffixes: Provider (Context), Helper (static), Manager (state/ops/orchestration).
 - **Import Patterns**:
   - Separate `import type` from runtime `import`.
+  - Group type imports from the same module; NEVER mix types and values in a single line.
 - **Code Minimalism**:
   - Write absolute minimal code.
   - Use early returns for clarity and better type inference.
+- **Function Patterns**:
+  - Functions with >2 parameters MUST use a configuration object.
+  - Use `as const` for constants and extract types via `typeof`.
 - **Data Parsing**: Validations and null checks must be explicitly performed before accessing properties of parsed structures (like config files, JSON outputs, or `package.json` reads).

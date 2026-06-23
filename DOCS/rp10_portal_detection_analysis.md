@@ -1,55 +1,55 @@
-# Análisis: ¿Debería NodePi detectar `redpoints-front-rp10`?
+# Analysis: Should NodePi detect `redpoints-front-rp10`?
 
-## 1. Resultado de `pnpm dev`
+## 1. `pnpm dev` Output
 
-El comando falló con código de salida 1:
+The command failed with exit code 1:
 
 ```
 [ERR_PNPM_FETCH_404] GET https://registry.npmjs.org/redpoints-front-translations: Not Found - 404
 ```
 
-> [!WARNING] `pnpm install` (ejecutado automáticamente por `pnpm dev` al detectar que faltan dependencias) intenta descargar paquetes privados de RedPoints (`redpoints-front-translations`, y presumiblemente muchos otros `redpoints-*`) desde el registry público de npm, donde no existen. Este proyecto requiere un **registry privado corporativo** (`nexus.rdpnts.com`) configurado en un `.npmrc` local o en un `yarn.lock` ya resuelto con yarn.
+> [!WARNING] `pnpm install` (automatically run by `pnpm dev` when detecting missing dependencies) attempts to download RedPoints' private packages (`redpoints-front-translations`, and presumably many other `redpoints-*` packages) from the public npm registry, where they do not exist. This project requires a **private corporate registry** (`nexus.rdpnts.com`) configured in a local `.npmrc` or an existing `yarn.lock` already resolved using Yarn.
 
 ---
 
-## 2. Estructura del Proyecto
+## 2. Project Structure
 
-| Señal                                     | Presente | Fichero / Evidencia                                                                                                          |
-| :---------------------------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| `vite.config.js`                          |    ✅    | [vite.config.js](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/vite.config.js)                            |
-| `vite` en devDependencies                 |    ✅    | `"vite": "4.1.0"` en [package.json L124](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/package.json#L124) |
-| `@vitejs/plugin-react-swc`                |    ✅    | [package.json L96](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/package.json#L96)                        |
-| `index.html` con `<script type="module">` |    ✅    | [index.html](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/index.html)                                    |
-| Script `start` usa `vite`                 |    ✅    | `"start": "yarn conf && HTTPS=true vite --open ..."`                                                                         |
-| Script `build` usa `vite build`           |    ✅    | `"build": "NODE_OPTIONS=... vite build"`                                                                                     |
-| `yarn.lock`                               |    ✅    | 380 KB                                                                                                                       |
-| `package-lock.json` / `pnpm-lock.yaml`    |    ❌    | Solo yarn                                                                                                                    |
-
----
-
-## 3. Veredicto: ¿Debería ser detectado por NodePi?
-
-### **SÍ, absolutamente.** Este es un proyecto Vite nativo.
-
-La detección de Vite en [preflight.ts](file:///Users/jorge/projects/NodePi-tui/src/core/preflight.ts#L102-L120) busca archivos `vite.config.{ts,js,mjs,cjs,mts}` en el directorio raíz. `redpoints-front-rp10` tiene un [vite.config.js](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/vite.config.js) y por lo tanto sería **correctamente detectado como proyecto Vite** por el Preflight actual.
+| Signal                                     | Present | File / Evidence                                                                                                              |
+| :----------------------------------------- | :-----: | :--------------------------------------------------------------------------------------------------------------------------- |
+| `vite.config.js`                           |   ✅    | [vite.config.js](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/vite.config.js)                            |
+| `vite` in devDependencies                  |   ✅    | `"vite": "4.1.0"` in [package.json L124](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/package.json#L124) |
+| `@vitejs/plugin-react-swc`                 |   ✅    | [package.json L96](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/package.json#L96)                        |
+| `index.html` with `<script type="module">` |   ✅    | [index.html](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/index.html)                                    |
+| Script `start` uses `vite`                 |   ✅    | `"start": "yarn conf && HTTPS=true vite --open ..."`                                                                         |
+| Script `build` uses `vite build`           |   ✅    | `"build": "NODE_OPTIONS=... vite build"`                                                                                     |
+| `yarn.lock`                                |   ✅    | 380 KB                                                                                                                       |
+| `package-lock.json` / `pnpm-lock.yaml`     |   ❌    | Yarn only                                                                                                                    |
 
 ---
 
-## 4. Diferencias Clave con los Módulos Aislados (ej. `documents-rp10`)
+## 3. Verdict: Should it be detected by NodePi?
 
-Este proyecto es **radicalmente diferente** a los módulos aislados analizados anteriormente:
+### **YES, absolutely.** This is a native Vite project.
 
-| Característica        | `redpoints-front-rp10` (Portal Shell)                                  | `redpoints-front-documents-rp10` (Módulo Aislado)               |
-| :-------------------- | :--------------------------------------------------------------------- | :-------------------------------------------------------------- |
-| **Rol**               | Aplicación principal (Portal)                                          | Sub-módulo aislado (plugin)                                     |
-| **`private`**         | `true` — No se publica en npm                                          | `false` (via `"publishConfig"`) — Se publica como paquete       |
-| **`vite.config`**     | Nativo, propio, commitado en Git                                       | Inyectado dinámicamente por `install-devApp`, en `.gitignore`   |
-| **Dependencias RP10** | Importa **todos** los módulos aislados como dependencias de producción | Solo se importa a sí mismo (self-referencing vía aliases)       |
-| **`install-devApp`**  | NO lo usa — es autosuficiente                                          | Lo usa — necesita el cascarón de `bundle-interface`             |
-| **`yarn dist`**       | NO tiene — compila con `vite build` para deploy                        | Sí tiene — compila bundles modulares con `vite-build-bundle.js` |
-| **Acciones Redux**    | Usa las de todos los módulos importados                                | Declara las suyas con prefijo (ej. `DOCUMENTS_REPOSITORY@`)     |
+Vite detection in [preflight.ts](file:///Users/jorge/projects/NodePi-tui/src/core/preflight.ts#L102-L120) searches for `vite.config.{ts,js,mjs,cjs,mts}` files in the root directory. `redpoints-front-rp10` contains a [vite.config.js](file:///Users/jorge/projects/frontend-repos/redpoints-front-rp10/vite.config.js) and therefore will be **correctly detected as a Vite project** by the current Preflight check.
 
-### Diagrama de relación:
+---
+
+## 4. Key Differences with Isolated Modules (e.g. `documents-rp10`)
+
+This project is **fundamentally different** from the isolated modules analyzed earlier:
+
+| Feature               | `redpoints-front-rp10` (Portal Shell)                       | `redpoints-front-documents-rp10` (Isolated Module)             |
+| :-------------------- | :---------------------------------------------------------- | :------------------------------------------------------------- |
+| **Role**              | Main application (Portal)                                   | Isolated sub-module (plugin)                                   |
+| **`private`**         | `true` — Not published to npm                               | `false` (via `"publishConfig"`) — Published as a package       |
+| **`vite.config`**     | Native, own config, committed in Git                        | Dynamically injected by `install-devApp`, in `.gitignore`      |
+| **RP10 Dependencies** | Imports **all** isolated modules as production dependencies | Only imports itself (self-referencing via aliases)             |
+| **`install-devApp`**  | NOT used — self-sufficient                                  | Used — requires the `bundle-interface` shell                   |
+| **`yarn dist`**       | NOT present — compiles with `vite build` for deployment     | Present — compiles modular bundles with `vite-build-bundle.js` |
+| **Redux Actions**     | Uses actions from all imported modules                      | Declares its own with prefixes (e.g. `DOCUMENTS_REPOSITORY@`)  |
+
+### Relationship Diagram:
 
 ```mermaid
 graph LR
@@ -60,10 +60,10 @@ graph LR
     Common["common-rp10"]
     Bundle["bundle-interface-rp10"]
 
-    Portal -->|importa| Docs
-    Portal -->|importa| Home
-    Portal -->|importa| Inc
-    Portal -->|importa| Common
+    Portal -->|imports| Docs
+    Portal -->|imports| Home
+    Portal -->|imports| Inc
+    Portal -->|imports| Common
 
     Docs -.->|install-devApp| Bundle
     Home -.->|install-devApp| Bundle
@@ -79,16 +79,16 @@ graph LR
 
 ---
 
-## 5. Implicaciones para NodePi
+## 5. Implications for NodePi
 
-### Lo que funciona bien hoy:
+### What works correctly today:
 
-- ✅ **Detección Vite**: El `preflight.ts` lo detectaría correctamente.
-- ✅ **Wrapper Vite HMR**: El [execution.ts](file:///Users/jorge/projects/NodePi-tui/src/core/execution.ts#L82-L131) puede inyectar el wrapper de HMR para forzar la recarga en caliente de dependencias locales dentro de `node_modules`.
+- ✅ **Vite Detection**: `preflight.ts` detects it correctly.
+- ✅ **Vite HMR Wrapper**: [execution.ts](file:///Users/jorge/projects/NodePi-tui/src/core/execution.ts#L82-L131) can inject the HMR wrapper to force hot reloading of local dependencies inside `node_modules`.
 
-### Consideraciones especiales del Portal Shell:
+### Special Portal Shell Considerations:
 
-1. **Muchas dependencias locales potenciales**: Este proyecto importa ~12 módulos `redpoints-front-*-rp10`. Si el desarrollador tiene varios de estos clonados localmente, NodePi necesitará descubrir y sincronizar **muchas** dependencias intermedias simultáneamente.
-2. **No usa `install-devApp`**: La configuración de Vite es propia, no inyectada. NodePi no necesita preocuparse por conflictos de ficheros de `bundle-interface`.
-3. **Yarn-only**: El proyecto usa exclusivamente `yarn.lock`. El aviso de colisión de lockfiles en el Preflight se disparará siempre al intentar usar `pnpm install`.
-4. **Registry privado**: La inyección `pnpm install` fallará si no se configura el registry corporativo previamente (como vimos en el error del comando).
+1. **Many potential local dependencies**: This project imports ~12 `redpoints-front-*-rp10` modules. If the developer has several of these cloned locally, NodePi will need to discover and synchronize **many** intermediate dependencies simultaneously.
+2. **Does not use `install-devApp`**: The Vite configuration is its own, not injected. NodePi does not need to worry about configuration file conflicts from `bundle-interface`.
+3. **Yarn-only**: The project uses `yarn.lock` exclusively. The lockfile collision warning in Preflight will always trigger when attempting to run `pnpm install`.
+4. **Private Registry**: The `pnpm install` step will fail if the corporate registry is not pre-configured (as seen in the command error).

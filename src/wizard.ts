@@ -119,7 +119,9 @@ export async function runWizard(): Promise<void> {
 
   if (!validationResult.isValid) {
     validationSpinner.stop(pc.red('Fallo en el análisis del proyecto.'));
-    log.error(pc.red(`Error: ${validationResult.error}`));
+    const home = os.homedir();
+    const formattedError = (validationResult.error || '').replace(home, '~');
+    log.error(pc.red(`Error: ${formattedError}`));
     process.exit(1);
     return;
   }
