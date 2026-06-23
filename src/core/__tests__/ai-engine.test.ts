@@ -17,6 +17,12 @@ vi.mock('execa', () => ({
   execa: vi.fn(),
 }));
 
+vi.mock('@clack/prompts', () => ({
+  log: {
+    error: vi.fn(),
+  },
+}));
+
 vi.mock('../script-cache.js', () => ({
   scriptCache: {
     get: vi.fn(),
@@ -26,8 +32,12 @@ vi.mock('../script-cache.js', () => ({
 
 describe('AI Inference Engine & Heuristics', () => {
   let tempDir: string;
+  let exitSpy: any;
 
   beforeEach(async () => {
+    exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation(() => undefined as never);
     tempDir = path.join(
       os.tmpdir(),
       'nodepi-test-ai-engine-' + Math.random().toString(36).slice(2)
@@ -37,6 +47,7 @@ describe('AI Inference Engine & Heuristics', () => {
   });
 
   afterEach(async () => {
+    exitSpy.mockRestore();
     vi.clearAllMocks();
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -159,7 +170,7 @@ Hope this helps!`;
       vi.mocked(scriptCache.get).mockResolvedValue(cached);
 
       const pkgJson = { name: 'my-lib' };
-      const result = await resolveBuildAndWatch(tempDir, pkgJson);
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, true);
 
       expect(result).toEqual(cached);
       expect(execa).not.toHaveBeenCalled();
@@ -186,7 +197,7 @@ Hope this helps!`;
         },
       };
 
-      const result = await resolveBuildAndWatch(tempDir, pkgJson);
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, true);
 
       expect(result).toEqual({
         buildScript: 'build',
@@ -200,7 +211,7 @@ Hope this helps!`;
         expect.arrayContaining([
           '--print',
           '--print-timeout',
-          '5s',
+          '45s',
           '--dangerously-skip-permissions',
         ]),
         expect.any(Object)
@@ -233,12 +244,49 @@ Hope this helps!`;
         },
       };
 
-      const result = await resolveBuildAndWatch(tempDir, pkgJson);
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, true);
 
       // Should automatically override watchScript to run tsc compiler natively in watch mode
       expect(result.buildScript).toBe('build');
       expect(result.watchScript).toBe('tsc -w -p ./tsconfig.build.json');
       expect(result.outDir).toBe('dist');
+    });
+
+    test('should exit process with code 1 if agy fails and hasAgy is true', async () => {
+      // Mock agy throwing error
+      vi.mocked(execa).mockRejectedValue(new Error('Command timed out after 45000 milliseconds'));
+
+      const pkgJson = {
+        name: 'my-lib',
+        scripts: {
+          build: 'tsc',
+        },
+      };
+
+      await resolveBuildAndWatch(tempDir, pkgJson, true);
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    test('should bypass agy and use fallback / heuristics if hasAgy is false', async () => {
+      const pkgJson = {
+        name: 'my-lib',
+        scripts: {
+          build: 'tsc',
+        },
+      };
+
+      const fallbackMock = vi.fn().mockResolvedValue({
+        buildScript: 'build-fallback',
+        watchScript: null,
+        outDir: 'dist-fallback',
+      });
+
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, false, fallbackMock);
+
+      expect(execa).not.toHaveBeenCalled();
+      expect(fallbackMock).toHaveBeenCalled();
+      expect(result.buildScript).toBe('build-fallback');
     });
   });
 });

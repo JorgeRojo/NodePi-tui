@@ -37,7 +37,9 @@ Instead of relying on fragile string-matching heuristics or asking the user for 
 
 > **Note**: The PM Collision Check from the original design has been **removed**. Since NodePi no longer runs any package manager in the target project, there is no collision risk. NodePi works transparently with any lockfile.
 
-**AI Inference Fallback**: After the user selects the operation mode (Sync or Inject), the CLI checks its smart caching layer (`~/.nodepi/scripts_cache.json`). The cache generates a SHA-256 hash using the `package.json` and all build configuration files (`tsconfig*.json`, `vite.config.ts`, etc. — note: `tsconfig*.json` with glob, not just `tsconfig.json`). If a cache miss occurs, the CLI bundles all these relevant files and executes a background call to `agy` with a 5-second timeout.
+**AI Inference Fallback**: After the user selects the operation mode (Sync or Inject), the CLI checks its smart caching layer (`~/.nodepi/scripts_cache.json`). The cache generates a SHA-256 hash using the `package.json` and all build configuration files (`tsconfig*.json`, `vite.config.ts`, etc. — note: `tsconfig*.json` with glob, not just `tsconfig.json`). If a cache miss occurs, the CLI bundles all these relevant files and executes a background call to `agy` with a 15-second timeout.
+
+- **Payload Optimization**: The payload data sent to `agy` is simplified to only include `"name"`, `"scripts"`, and dependency keys (omitting full objects and versions) to prevent API size limit and proxy timeouts.
 
 - **On Success**: `agy` returns a standardized JSON object mapping each dependency to its correct `watch`/`build` script and its compiled output directory, which is cached.
 - **On Fallback**: If `agy` fails or times out, the CLI prompts the user to select one of the scripts from `package.json` and inputs/selects the output directory (suggesting defaults like `dist`). This selection is cached under the same hash.
@@ -73,8 +75,8 @@ graph TD
 ## 🛠️ Implementation Phases
 
 1. **Phase 1: Foundation**: Setup `clack/prompts`, implement system preflight checks (post-crash recovery, Vite detection, tool validation), and global `.nodepirc` parsing.
-2. **Phase 2: The Wizard**: Build the interactive prompt flow (Select packages → Multi-Dependency Discovery via `node_modules/` graph traversal → Git Guard [with non-git and no-upstream safe fallbacks] → Select Mode).
-3. **Phase 3: The AI Engine**: Implement the prompt builder for `agy` (invoked via `agy --print "<prompt>" --print-timeout 5s --dangerously-skip-permissions`), parse JSON response, implement TSC watch auto-fallback for TypeScript packages without watch scripts, and implement the interactive manual prompt fallback on failure/timeout.
+2. **Phase 2: The Wizard**: Build the interactive prompt flow (Select packages → Multi-Dependency Discovery via `node_modules/` graph traversal → Git Guard [with non-git and no-upstream safe fallbacks] → Select Mode). Also, display the dynamically and programmatically generated target project command sequence, and prompt the user to optionally execute it.
+3. **Phase 3: The AI Engine**: Implement the prompt builder for `agy` (invoked via `agy --print "<prompt>" --print-timeout 15s --dangerously-skip-permissions`), parse JSON response, implement TSC watch auto-fallback for TypeScript packages without watch scripts, and implement the interactive manual prompt fallback on failure/timeout.
 4. **Phase 4: Execution Engine**: Implement the backup logic (backup dependency folders in `node_modules/`, writing metadata to `.nodepi/backup-meta.json`), dependency path resolution (`require.resolve` fallback), initial `rsync` overwrite, entrypoint patching for `"main": ""` packages, and optional Vite wrapper generator.
 5. **Phase 5: Orchestration**: Implement `chokidar` + `rsync` sync loop (with 150ms debounce and sequential queueing), and spawning AI/fallback-discovered compilers.
 6. **Phase 6: Exit Handlers**: Ensure bulletproof `SIGINT` trapping to restore the workspace pristinely — restore backed-up folders, remove `.nodepi/`, kill all subprocesses.

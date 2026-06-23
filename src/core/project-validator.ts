@@ -1,3 +1,4 @@
+import { log } from '@clack/prompts';
 import { execa } from 'execa';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -14,6 +15,22 @@ export interface ProjectValidationResult {
   scriptSequence: ScriptStep[];
   warnings: string[];
   error?: string;
+}
+
+/**
+ * Helper function to build package-manager script run commands.
+ */
+function getRunCommand(
+  packageManager: 'yarn' | 'pnpm' | 'npm',
+  scriptName: string
+): string {
+  if (packageManager === 'npm') {
+    if (scriptName === 'start' || scriptName === 'test') {
+      return `npm ${scriptName}`;
+    }
+    return `npm run ${scriptName}`;
+  }
+  return `${packageManager} ${scriptName}`;
 }
 
 /**
@@ -113,118 +130,32 @@ export async function validateProject(
 
   const scripts = (packageJson.scripts || {}) as Record<string, string>;
 
-  // 3. Try deterministic detection
-  // Type A: bundle-interface-module
-  const isBundleInterfaceModule =
-    Boolean(devDependencies['redpoints-front-bundle-interface-rp10']) ||
-    Boolean(dependencies['redpoints-front-bundle-interface-rp10']) ||
-    Boolean(scripts['install-devApp']);
-
-  if (isBundleInterfaceModule) {
-    const installCmd = scripts['install:dependencies']
-      ? `${packageManager} install:dependencies`
-      : `${packageManager} install`;
-    const sequence: ScriptStep[] = [
-      {
-        command: installCmd,
-        description:
-          'Instala dependencias locales e inicializa el entorno aislado con install-devApp.',
-      },
-    ];
-
-    if (scripts['conf']) {
-      sequence.push({
-        command: `${packageManager} conf`,
-        description:
-          'Descarga las configuraciones del entorno de pruebas (APIs de Portal).',
-      });
-    }
-
-    if (scripts['start']) {
-      sequence.push({
-        command: `${packageManager} start`,
-        description: 'Inicia el servidor local de desarrollo de Vite.',
-      });
-    }
-
-    if (scripts['dist']) {
-      sequence.push({
-        command: `${packageManager} dist`,
-        description: 'Compila y empaqueta el bundle final para producción.',
-      });
-    }
-
-    return {
-      isValid: true,
-      packageManager,
-      projectType: 'bundle-interface-module',
-      scriptSequence: sequence,
-      warnings,
-    };
-  }
-
-  // Type B: standard-vite
-  const isViteProject =
-    files.some(f => f.startsWith('vite.config')) ||
-    Boolean(dependencies['vite']) ||
-    Boolean(devDependencies['vite']);
-
-  if (isViteProject) {
-    const sequence: ScriptStep[] = [
-      {
-        command: `${packageManager} install`,
-        description: 'Instala las dependencias del proyecto.',
-      },
-    ];
-
-    if (scripts['conf']) {
-      sequence.push({
-        command: `${packageManager} conf`,
-        description: 'Descarga las configuraciones de APIs de desarrollo.',
-      });
-    }
-
-    // Find the dev/start script
-    let runDevCmd = `${packageManager} run dev`;
-    if (scripts['dev']) {
-      runDevCmd = `${packageManager} dev`;
-    } else if (scripts['start']) {
-      runDevCmd = `${packageManager} start`;
-    }
-
-    sequence.push({
-      command: runDevCmd,
-      description: 'Inicia el servidor de desarrollo de Vite.',
-    });
-
-    if (scripts['build']) {
-      sequence.push({
-        command: `${packageManager} build`,
-        description: 'Compila el proyecto para producción.',
-      });
-    }
-
-    return {
-      isValid: true,
-      packageManager,
-      projectType: 'standard-vite',
-      scriptSequence: sequence,
-      warnings,
-    };
-  }
-
-  // 4. If not deterministic, fall back to agy (if available) or programmatic default
+  // 3. AI-driven sequence resolution if hasAgy is true
   if (hasAgy) {
     try {
-      const prompt = `Eres un asistente de desarrollo experto. Tu objetivo es deducir la secuencia exacta de comandos de terminal (scripts) que un desarrollador debe ejecutar para levantar el entorno de desarrollo y compilar el proyecto basándote en la estructura de su package.json y los archivos en la raíz.
+      const simplifiedPackageJson = {
+        name: packageJson.name,
+        scripts: packageJson.scripts || {},
+        dependencies: packageJson.dependencies ? Object.keys(packageJson.dependencies) : [],
+        devDependencies: packageJson.devDependencies ? Object.keys(packageJson.devDependencies) : [],
+      };
+
+      const prompt = `Eres un asistente de desarrollo experto y especialista en flujos de inyección y sincronización de dependencias locales (usando NodePi).
+Tu objetivo es deducir los comandos exactos de terminal (scripts) y el tipo de proyecto destino para preparar/instalar el entorno local antes de continuar con la inyección.
+
+Sigue estrictamente estas directrices para la secuencia de comandos:
+1. Recomienda únicamente los comandos iniciales necesarios para instalar dependencias y realizar la configuración preliminar del entorno.
+2. Los comandos recomendados en la secuencia deben ser exactamente los definidos en el package.json, sin añadir prefijos de variables de entorno ni modificar su sintaxis.
+3. Excluye por completo comandos destinados a compilar el proyecto o a arrancar servidores de desarrollo.
+4. Identifica y agrega en "warnings" advertencias clave sobre variables de entorno requeridas, red/VPN, hosts locales, certificados o cualquier pre-requisito crítico para configurar el entorno.
 
 ---
-DATOS DEL PROYECTO:
+DATOS DEL PROYECTO DESTINO:
 Nombre: ${packageJson.name || 'proyecto'}
 Archivos en la raíz: ${files.join(', ')}
 
 <package_json>
-${JSON.stringify(packageJson, null, 2)}
+${JSON.stringify(simplifiedPackageJson, null, 2)}
 </package_json>
 ---
 
@@ -250,13 +181,15 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
       const { stdout } = await execa(
         'agy',
         [
+          '--model',
+          'gemini-3.5-flash',
+          '--print-timeout',
+          '45s',
+          '--dangerously-skip-permissions',
           '--print',
           prompt,
-          '--print-timeout',
-          '5s',
-          '--dangerously-skip-permissions',
         ],
-        { timeout: 5000 }
+        { timeout: 45000 }
       );
 
       const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
@@ -274,44 +207,131 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
             warnings.push(String(w));
           }
         }
+
+        let sequence = parsed.sequence;
+        if (scripts['setup']) {
+          sequence = [
+            {
+              command: getRunCommand(packageManager, 'setup'),
+              description: 'Inicializa y configura el proyecto para el desarrollo (incluye toda la lógica de preparación e instalación necesaria).',
+            },
+          ];
+        }
+
         return {
           isValid: true,
           packageManager,
           projectType: parsed.projectType || 'other',
-          scriptSequence: parsed.sequence,
+          scriptSequence: sequence,
           warnings,
         };
       }
-    } catch {
-      // Ignore agy errors and fall back to programmatic default
+    } catch (err: any) {
+      log.error(`[NodePi] Fallo en la llamada a agy al analizar la estructura del proyecto destino: ${err.message}`);
+      process.exit(1);
+      return undefined as any;
     }
   }
 
-  // Programmatic fallback for 'other'
-  const fallbackSequence: ScriptStep[] = [
-    {
-      command: `${packageManager} install`,
-      description: 'Instala las dependencias del proyecto.',
-    },
-  ];
+  // 4. Deterministic validation fallback (when hasAgy is false)
+  // Type A: bundle-interface-module
+  const isBundleInterfaceModule =
+    Boolean(devDependencies['redpoints-front-bundle-interface-rp10']) ||
+    Boolean(dependencies['redpoints-front-bundle-interface-rp10']) ||
+    Boolean(scripts['install-devApp']);
 
-  if (scripts['dev']) {
-    fallbackSequence.push({
-      command: `${packageManager} dev`,
-      description: 'Inicia el servidor de desarrollo.',
-    });
-  } else if (scripts['start']) {
-    fallbackSequence.push({
-      command: `${packageManager} start`,
-      description: 'Inicia el servidor de desarrollo.',
-    });
+  if (isBundleInterfaceModule) {
+    const installCmd = scripts['install:dependencies']
+      ? getRunCommand(packageManager, 'install:dependencies')
+      : `${packageManager} install`;
+    const sequence: ScriptStep[] = [
+      {
+        command: installCmd,
+        description:
+          'Instala dependencias locales e inicializa el entorno aislado con install-devApp.',
+      },
+    ];
+
+    if (scripts['conf']) {
+      sequence.push({
+        command: getRunCommand(packageManager, 'conf'),
+        description:
+          'Descarga las configuraciones del entorno de pruebas (APIs de Portal).',
+      });
+    }
+
+    return {
+      isValid: true,
+      packageManager,
+      projectType: 'bundle-interface-module',
+      scriptSequence: sequence,
+      warnings,
+    };
   }
 
-  if (scripts['build']) {
+  // Type B: standard-vite
+  const isViteProject =
+    files.some(f => f.startsWith('vite.config')) ||
+    Boolean(dependencies['vite']) ||
+    Boolean(devDependencies['vite']);
+
+  if (isViteProject) {
+    const sequence: ScriptStep[] = [];
+
+    if (scripts['setup']) {
+      sequence.push({
+        command: getRunCommand(packageManager, 'setup'),
+        description: 'Inicializa y configura el proyecto para el desarrollo.',
+      });
+    } else {
+      const installCmd = scripts['install:dependencies']
+        ? getRunCommand(packageManager, 'install:dependencies')
+        : `${packageManager} install`;
+      sequence.push({
+        command: installCmd,
+        description: 'Instala las dependencias del proyecto.',
+      });
+
+      if (scripts['conf']) {
+        sequence.push({
+          command: getRunCommand(packageManager, 'conf'),
+          description: 'Descarga las configuraciones de APIs de desarrollo.',
+        });
+      }
+    }
+
+    return {
+      isValid: true,
+      packageManager,
+      projectType: 'standard-vite',
+      scriptSequence: sequence,
+      warnings,
+    };
+  }
+
+  // Programmatic fallback for 'other'
+  const fallbackSequence: ScriptStep[] = [];
+
+  if (scripts['setup']) {
     fallbackSequence.push({
-      command: `${packageManager} build`,
-      description: 'Compila el proyecto.',
+      command: getRunCommand(packageManager, 'setup'),
+      description: 'Inicializa y configura el proyecto.',
     });
+  } else {
+    const installCmd = scripts['install:dependencies']
+      ? getRunCommand(packageManager, 'install:dependencies')
+      : `${packageManager} install`;
+    fallbackSequence.push({
+      command: installCmd,
+      description: 'Instala las dependencias del proyecto.',
+    });
+
+    if (scripts['conf']) {
+      fallbackSequence.push({
+        command: getRunCommand(packageManager, 'conf'),
+        description: 'Descarga las configuraciones de APIs de desarrollo.',
+      });
+    }
   }
 
   return {

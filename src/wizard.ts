@@ -149,6 +149,45 @@ export async function runWizard(): Promise<void> {
     );
   });
 
+  if (validationResult.scriptSequence.length > 0) {
+    const shouldExecute = await confirm({
+      message: '¿Deseas ejecutar la secuencia de comandos recomendada en el proyecto destino?',
+      initialValue: true,
+    });
+
+    if (typeof shouldExecute === 'symbol') {
+      log.error('Operación cancelada.');
+      process.exit(1);
+      return;
+    }
+
+    if (shouldExecute) {
+      log.info('Ejecutando secuencia de comandos recomendada...');
+      for (const step of validationResult.scriptSequence) {
+        log.step(`Ejecutando: ${step.command} (${step.description})`);
+        try {
+          await execa(step.command, {
+            cwd: process.cwd(),
+            stdio: 'inherit',
+            shell: true,
+          });
+        } catch (err: any) {
+          log.error(`Fallo al ejecutar el comando "${step.command}": ${err.message}`);
+          const shouldContinue = await confirm({
+            message: '¿Deseas continuar con el resto de los comandos de la secuencia?',
+            initialValue: false,
+          });
+          if (typeof shouldContinue === 'symbol' || !shouldContinue) {
+            log.error('Operación cancelada.');
+            process.exit(1);
+            return;
+          }
+        }
+      }
+      log.success('Secuencia de comandos recomendada ejecutada con éxito.');
+    }
+  }
+
   // 1. Load Configurations
   let globalConfig = await configManager.loadGlobal();
   if (globalConfig.containers.length === 0) {
@@ -446,6 +485,7 @@ export async function runWizard(): Promise<void> {
     const resolution = await resolveBuildAndWatch(
       localPath,
       pkgJson,
+      preflight.hasAgy,
       promptFallback as any
     );
     resolvedScripts.set(dep, resolution);

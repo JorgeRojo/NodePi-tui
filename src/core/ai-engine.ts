@@ -1,3 +1,4 @@
+import { log } from '@clack/prompts';
 import { execa } from 'execa';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -19,7 +20,13 @@ export async function buildAgyPrompt(
   tsconfigs: { fileName: string; content: string }[],
   bundlerConfigs: { fileName: string; content: string }[]
 ): Promise<string> {
-  const packageJsonContent = JSON.stringify(packageJson, null, 2);
+  const simplifiedPackageJson = {
+    name: packageJson.name,
+    scripts: packageJson.scripts || {},
+    dependencies: packageJson.dependencies ? Object.keys(packageJson.dependencies) : [],
+    devDependencies: packageJson.devDependencies ? Object.keys(packageJson.devDependencies) : [],
+  };
+  const packageJsonContent = JSON.stringify(simplifiedPackageJson, null, 2);
 
   let prompt = `Eres un analizador de configuraciones de empaquetado y compilación de JavaScript/TypeScript.
 Tu objetivo es deducir los comandos óptimos de construcción (\`buildScript\`), observación en vivo (\`watchScript\`) y el directorio final de salida (\`outDir\`) para una dependencia local basándote exclusivamente en sus archivos de configuración.
@@ -138,6 +145,7 @@ export function validateAnalysisResult(
 export async function resolveBuildAndWatch(
   packagePath: string,
   packageJson: any,
+  hasAgy: boolean,
   promptFallback?: () => Promise<ScriptAnalysisResult>
 ): Promise<ScriptAnalysisResult> {
   // 1. Try Cache First
@@ -187,33 +195,49 @@ export async function resolveBuildAndWatch(
     }
   }
 
-  const prompt = await buildAgyPrompt(
-    packageJson.name || 'library',
-    packageJson,
-    tsconfigs,
-    bundlerConfigs
-  );
-
   let result: ScriptAnalysisResult;
 
-  try {
-    // 3. Invoke agy with 5-second timeout
-    const { stdout } = await execa(
-      'agy',
-      [
-        '--print',
-        prompt,
-        '--print-timeout',
-        '5s',
-        '--dangerously-skip-permissions',
-      ],
-      { timeout: 5000 }
+  if (hasAgy) {
+    const prompt = await buildAgyPrompt(
+      packageJson.name || 'library',
+      packageJson,
+      tsconfigs,
+      bundlerConfigs
     );
 
-    const parsed = parseAgyResponse(stdout);
-    result = validateAnalysisResult(parsed, packageJson);
-  } catch {
-    // 4. Fallback on AI failure / timeout
+    try {
+      // 3. Invoke agy with 45-second timeout
+      const pkgName = packageJson.name || 'library';
+      console.log(`\n[NodePi] Llamada a agy para ${pkgName}:`);
+      console.log(`$ agy --model gemini-3.5-flash --print "<prompt>" --print-timeout 45s --dangerously-skip-permissions`);
+
+      const { stdout } = await execa(
+        'agy',
+        [
+          '--model',
+          'gemini-3.5-flash',
+          '--print-timeout',
+          '45s',
+          '--dangerously-skip-permissions',
+          '--print',
+          prompt,
+        ],
+        { timeout: 45000 }
+      );
+
+      console.log(`\n[NodePi] Output de agy para ${pkgName}:`);
+      console.log(stdout);
+
+      const parsed = parseAgyResponse(stdout);
+      result = validateAnalysisResult(parsed, packageJson);
+    } catch (err: any) {
+      const pkgName = packageJson.name || 'library';
+      log.error(`[NodePi] Fallo en la llamada a agy para ${pkgName}: ${err.message}`);
+      process.exit(1);
+      return undefined as any;
+    }
+  } else {
+    // 4. Fallback on AI failure / timeout or when agy is not installed
     if (promptFallback) {
       result = await promptFallback();
     } else {

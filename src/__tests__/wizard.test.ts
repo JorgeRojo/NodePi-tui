@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { multiselect, select } from '@clack/prompts';
+import { confirm, multiselect, select } from '@clack/prompts';
 import { execa } from 'execa';
 import fs from 'node:fs/promises';
 
@@ -120,7 +120,6 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
       projectType: 'standard-vite',
       scriptSequence: [
         { command: 'npm install', description: 'Instala las dependencias del proyecto.' },
-        { command: 'npm run dev', description: 'Inicia el servidor de desarrollo de Vite.' },
       ],
       warnings: [],
     });
@@ -172,6 +171,7 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
     // Default prompt mock selections
     vi.mocked(multiselect).mockResolvedValue(['lib-core']);
     vi.mocked(select).mockResolvedValue('inject'); // opera mode select
+    vi.mocked(confirm).mockResolvedValue(false);
 
     // Mock fs.readFile for local packages package.json
     vi.spyOn(fs, 'readFile').mockImplementation(async (filePath: any) => {
@@ -211,6 +211,7 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
     expect(resolveBuildAndWatch).toHaveBeenCalledWith(
       '/my/projects/lib-core',
       expect.any(Object),
+      true,
       expect.any(Function)
     );
 

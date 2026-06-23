@@ -1,5 +1,6 @@
 import glob from 'fast-glob';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 
 /**
@@ -13,12 +14,19 @@ export async function scanContainers(
 
   for (const container of containers) {
     try {
-      const stat = await fs.stat(container);
+      let resolvedDir = container;
+      if (container.startsWith('~/') || container === '~') {
+        resolvedDir = path.join(os.homedir(), container.slice(1));
+      } else {
+        resolvedDir = path.resolve(container);
+      }
+
+      const stat = await fs.stat(resolvedDir);
       if (!stat.isDirectory()) continue;
 
       // Scan for packages up to 2 levels deep (supporting standard and scoped packages)
       const matches = await glob(['*/package.json', '*/*/package.json'], {
-        cwd: container,
+        cwd: resolvedDir,
         absolute: true,
         onlyFiles: true,
       });
@@ -59,8 +67,7 @@ export async function buildDependencyGraph(
     const pkgJsonPath = path.join(packagePath, 'package.json');
     const content = await fs.readFile(pkgJsonPath, 'utf-8');
     const parsed = JSON.parse(content);
-    const name =
-      parsed.name || (isRoot ? 'target' : path.basename(packagePath));
+    const name = isRoot ? 'target' : (parsed.name || path.basename(packagePath));
 
     if (visited.has(name)) {
       return name;
