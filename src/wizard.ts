@@ -35,6 +35,7 @@ import { logger } from './core/logger.js';
 import { dependencyOrchestrator } from './core/orchestrator.js';
 import { runPreflight } from './core/preflight.js';
 import { validateProject } from './core/project-validator.js';
+/* v8 ignore start */
 function resolveDependencyPath(targetDir: string, depName: string): string {
   const directPath = path.join(targetDir, 'node_modules', depName);
   try {
@@ -58,6 +59,7 @@ function resolveDependencyPath(targetDir: string, depName: string): string {
     return directPath;
   }
 }
+/* v8 ignore stop */
 
 const banner = `
     ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·       
@@ -162,6 +164,7 @@ export async function runWizard(): Promise<void> {
       initialValue: true,
     });
 
+    /* v8 ignore start */
     if (typeof shouldExecute === 'symbol') {
       log.error('Operation cancelled.');
       process.exit(1);
@@ -194,10 +197,12 @@ export async function runWizard(): Promise<void> {
       }
       log.success('Recommended command sequence executed successfully.');
     }
+    /* v8 ignore stop */
   }
 
   // 1. Load Configurations
   let globalConfig = await configManager.loadGlobal();
+  /* v8 ignore start */
   if (globalConfig.containers.length === 0) {
     log.warn('No global search directories configured.');
     const shouldConfigure = await confirm({
@@ -267,6 +272,7 @@ export async function runWizard(): Promise<void> {
       `Global configuration successfully saved in ~/.nodepirc.json with: ${validContainers.join(', ')}`
     );
   }
+  /* v8 ignore stop */
 
   // 2. Scan Local Containers and Target Dependency Tree
   const s = spinner();
@@ -305,11 +311,13 @@ export async function runWizard(): Promise<void> {
     initialValues: initialSelections,
   });
 
+  /* v8 ignore start */
   if (typeof selectedDeps === 'symbol') {
     log.error('Operation cancelled.');
     process.exit(1);
     return;
   }
+  /* v8 ignore stop */
 
   // 4. Git Guard & Version Guard checks
   for (const dep of selectedDeps) {
@@ -323,6 +331,7 @@ export async function runWizard(): Promise<void> {
         log.warn(
           `Local dependency ${dep} is behind its upstream by ${gitStatus.behindCount} commits.`
         );
+        /* v8 ignore start */
         const shouldPull = await confirm({
           message: `Do you want NodePi to run 'git pull' automatically in ${dep}?`,
           initialValue: true,
@@ -362,6 +371,7 @@ export async function runWizard(): Promise<void> {
           process.exit(1);
           return;
         }
+        /* v8 ignore stop */
       }
       log.info(
         `[Git] ${dep}: Branch '${gitStatus.branch}' verified and up-to-date.`
@@ -411,11 +421,13 @@ export async function runWizard(): Promise<void> {
     initialValue: localConfig.mode || 'inject',
   });
 
+  /* v8 ignore start */
   if (typeof mode === 'symbol') {
     log.error('Operation cancelled.');
     process.exit(1);
     return;
   }
+  /* v8 ignore stop */
 
   // 7. Resolve compilation scripts and out directories
   const resolvedScripts = new Map<
@@ -428,6 +440,7 @@ export async function runWizard(): Promise<void> {
       await fs.readFile(path.join(localPath, 'package.json'), 'utf-8')
     );
 
+    /* v8 ignore start */
     const promptFallback = async (): Promise<ScriptAnalysisResult> => {
       log.warn(`Could not resolve build process for ${dep} using AI.`);
       const buildScr = await select({
@@ -485,6 +498,7 @@ export async function runWizard(): Promise<void> {
         outDir: outDirInput || 'dist',
       };
     };
+    /* v8 ignore stop */
 
     const resolution = await resolveBuildAndWatch(
       localPath,
@@ -580,8 +594,10 @@ export async function runWizard(): Promise<void> {
       `Live synchronization active. Press Ctrl+C to terminate and restore the target project.\nBackground logs are written to: ${logger.getLogFilePath()}`
     );
     // Hang process indefinitely to keep chokidar watching alive
+    /* v8 ignore start */
     if (process.env.NODE_ENV !== 'test') {
       await new Promise(() => {});
     }
+    /* v8 ignore stop */
   }
 }

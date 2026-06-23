@@ -122,4 +122,44 @@ describe('ConfigManager', () => {
     const saved = JSON.parse(fileContent);
     expect(saved).toEqual(newGlobalConfig);
   });
+
+  test('should default dependencies to empty array if config has non-array dependencies', async () => {
+    await fs.writeFile(
+      path.join(tempDir, '.nodepirc.json'),
+      JSON.stringify({ mode: 'sync', dependencies: 'not-an-array' }),
+      'utf-8'
+    );
+    const config = await configManager.load();
+    expect(config.dependencies).toEqual([]);
+  });
+
+  test('should default containers to empty array if global config has non-array containers', async () => {
+    await fs.writeFile(
+      path.join(tempDir, '.nodepirc.json'),
+      JSON.stringify({ containers: 'not-an-array' }),
+      'utf-8'
+    );
+    const globalConfig = await configManager.loadGlobal();
+    expect(globalConfig.containers).toEqual([]);
+  });
+
+  test('should fallback to defaults and return empty containers on invalid global JSON', async () => {
+    await fs.writeFile(
+      path.join(tempDir, '.nodepirc.json'),
+      'invalid-global-json-{',
+      'utf-8'
+    );
+    const globalConfig = await configManager.loadGlobal();
+    expect(globalConfig.containers).toEqual([]);
+  });
+
+  test('should default mode to inject if config has an invalid mode value', async () => {
+    await fs.writeFile(
+      path.join(tempDir, '.nodepirc.json'),
+      JSON.stringify({ mode: 'invalid-mode', dependencies: [] }),
+      'utf-8'
+    );
+    const config = await configManager.load();
+    expect(config.mode).toBe('inject');
+  });
 });

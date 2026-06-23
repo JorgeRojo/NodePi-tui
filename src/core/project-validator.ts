@@ -26,9 +26,6 @@ function getRunCommand(
   scriptName: string
 ): string {
   if (packageManager === 'npm') {
-    if (scriptName === 'start' || scriptName === 'test') {
-      return `npm ${scriptName}`;
-    }
     return `npm run ${scriptName}`;
   }
   return `${packageManager} ${scriptName}`;
@@ -72,7 +69,7 @@ export async function validateProject(
   try {
     files = await fs.readdir(targetDir);
   } catch {
-    // Ignore and proceed with empty list
+    void 0;
   }
 
   let packageJson: Record<string, unknown>;

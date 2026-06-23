@@ -54,11 +54,16 @@ describe('Dependency Discovery', () => {
       JSON.stringify({ name: '@scope/lib-b', version: '2.0.0' })
     );
 
+    // Create a file in containersDir to test non-directory container
+    const dummyFile = path.join(containersDir, 'dummy-file.txt');
+    await fs.writeFile(dummyFile, 'hello');
+
     // Create a directory without package.json to test exclusion
     const emptyDir = path.join(containersDir, 'empty-dir');
     await fs.mkdir(emptyDir, { recursive: true });
 
-    const localPackages = await scanContainers([containersDir]);
+    // Include the file in containers list to cover !stat.isDirectory() branch
+    const localPackages = await scanContainers([containersDir, dummyFile]);
 
     expect(localPackages.size).toBe(2);
     expect(localPackages.get('lib-a')).toBe(pkgADir);
@@ -184,5 +189,135 @@ describe('Dependency Discovery', () => {
 
     expect(graph.get('target')).toEqual(['lib-a']);
     expect(graph.get('custom-name-app')).toBeUndefined();
+  });
+
+  test('scanContainers should ignore unreadable/missing folders and malformed package.json files', async () => {
+    // 1. Missing container folder
+    const missingDir = path.join(tempDir, 'does-not-exist');
+
+    // 2. Malformed package.json container folder
+    const malformedDir = path.join(containersDir, 'malformed-pkg');
+    await fs.mkdir(malformedDir, { recursive: true });
+    await fs.writeFile(
+      path.join(malformedDir, 'package.json'),
+      'invalid { json'
+    );
+
+    const localPackages = await scanContainers([missingDir, containersDir]);
+    expect(localPackages.size).toBe(0);
+  });
+
+  test('buildDependencyGraph should handle circular dependencies and return early from visited', async () => {
+    // Setup target project package.json -> lib-a
+    await fs.writeFile(
+      path.join(targetDir, 'package.json'),
+      JSON.stringify({
+        name: 'target',
+        dependencies: {
+          'lib-a': '^1.0.0',
+        },
+      })
+    );
+
+    const nodeModules = path.join(targetDir, 'node_modules');
+    const libADir = path.join(nodeModules, 'lib-a');
+    await fs.mkdir(libADir, { recursive: true });
+    // lib-a -> lib-b
+    await fs.writeFile(
+      path.join(libADir, 'package.json'),
+      JSON.stringify({
+        name: 'lib-a',
+        dependencies: {
+          'lib-b': '^1.0.0',
+        },
+      })
+    );
+
+    const libBDir = path.join(nodeModules, 'lib-b');
+    await fs.mkdir(libBDir, { recursive: true });
+    // lib-b -> lib-a (circular)
+    await fs.writeFile(
+      path.join(libBDir, 'package.json'),
+      JSON.stringify({
+        name: 'lib-b',
+        dependencies: {
+          'lib-a': '^1.0.0',
+        },
+      })
+    );
+
+    const graph = await buildDependencyGraph(targetDir);
+    expect(graph.get('target')).toEqual(['lib-a']);
+    expect(graph.get('lib-a')).toEqual(['lib-b']);
+    expect(graph.get('lib-b')).toEqual(['lib-a']);
+  });
+
+  test('buildDependencyGraph should return empty graph and not crash if directory is empty or has no package.json', async () => {
+    const emptyProjDir = path.join(tempDir, 'non-existent-proj');
+    const graph = await buildDependencyGraph(emptyProjDir);
+    expect(graph.size).toBe(0);
+  });
+
+  test('buildDependencyGraph should ignore uninstalled dependencies and not throw', async () => {
+    await fs.writeFile(
+      path.join(targetDir, 'package.json'),
+      JSON.stringify({
+        name: 'target',
+        dependencies: {
+          'non-existent-dep': '^1.0.0',
+        },
+      })
+    );
+    // Note: we don't install or place non-existent-dep inside node_modules
+
+    const graph = await buildDependencyGraph(targetDir);
+    expect(graph.get('target')).toEqual(['non-existent-dep']);
+    expect(graph.get('non-existent-dep')).toBeUndefined();
+  });
+
+  test('buildDependencyGraph should fallback to folder name if package.json has no name', async () => {
+    await fs.writeFile(
+      path.join(targetDir, 'package.json'),
+      JSON.stringify({
+        name: 'target',
+        dependencies: {
+          'anonymous-lib': '^1.0.0',
+        },
+      })
+    );
+
+    const nodeModules = path.join(targetDir, 'node_modules');
+    const libDir = path.join(nodeModules, 'anonymous-lib');
+    await fs.mkdir(libDir, { recursive: true });
+    // Write package.json without name
+    await fs.writeFile(
+      path.join(libDir, 'package.json'),
+      JSON.stringify({
+        version: '1.0.0',
+      })
+    );
+
+    const graph = await buildDependencyGraph(targetDir);
+    expect(graph.get('target')).toEqual(['anonymous-lib']);
+    expect(graph.get('anonymous-lib')).toEqual([]);
+  });
+
+  test('findIntermediateDependencies canReach should handle missing graph keys and visited paths', () => {
+    const graph = new Map<string, string[]>([
+      ['target', ['lib-a', 'non-existent-neighbor']],
+      ['lib-a', ['lib-a']], // Self loop
+      ['lib-b', []],
+    ]);
+    const localPackages = new Map<string, string>([
+      ['lib-b', '/path/to/lib-b'],
+    ]);
+
+    const result = findIntermediateDependencies(
+      'target',
+      'non-existent-dest',
+      graph,
+      localPackages
+    );
+    expect(result).toEqual([]);
   });
 });

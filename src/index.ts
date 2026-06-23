@@ -14,7 +14,7 @@ const pkg = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')
 );
 
-const usage = `NodePi CLI Wizard
+export const usage = `NodePi CLI Wizard
 
 Usage:
   nodepi [options]
@@ -25,47 +25,61 @@ Options:
   -h, --help            Print help usage and exit.
 `;
 
-const { values } = parseArgs({
-  options: {
-    cwd: {
-      type: 'string',
-      short: 'c',
+export async function main(
+  args: string[] = process.argv.slice(2)
+): Promise<void> {
+  const { values } = parseArgs({
+    args,
+    options: {
+      cwd: {
+        type: 'string',
+        short: 'c',
+      },
+      help: {
+        type: 'boolean',
+        short: 'h',
+      },
+      version: {
+        type: 'boolean',
+        short: 'v',
+      },
     },
-    help: {
-      type: 'boolean',
-      short: 'h',
-    },
-    version: {
-      type: 'boolean',
-      short: 'v',
-    },
-  },
-  strict: false,
-});
+    strict: false,
+  });
 
-if (values.help) {
-  console.log(usage);
-  process.exit(0);
-}
-
-if (values.version) {
-  console.log(`nodepi v${pkg.version}`);
-  process.exit(0);
-}
-
-if (values.cwd && typeof values.cwd === 'string') {
-  const targetDir = path.resolve(values.cwd);
-  try {
-    process.chdir(targetDir);
-  } catch (err: any) {
-    console.error(
-      `Error: Could not change directory to ${targetDir}: ${err.message}`
-    );
-    process.exit(1);
+  if (values.help) {
+    console.log(usage);
+    process.exit(0);
+    return;
   }
+
+  if (values.version) {
+    console.log(`nodepi v${pkg.version}`);
+    process.exit(0);
+    return;
+  }
+
+  if (values.cwd && typeof values.cwd === 'string') {
+    const targetDir = path.resolve(values.cwd);
+    try {
+      process.chdir(targetDir);
+    } catch (err: any) {
+      console.error(
+        `Error: Could not change directory to ${targetDir}: ${err.message}`
+      );
+      process.exit(1);
+      return;
+    }
+  }
+
+  await runWizard();
 }
 
-runWizard().catch(err => {
-  console.error('Uncaught fatal error:', err.message);
-  process.exit(1);
-});
+/* v8 ignore start */
+if (process.env.NODE_ENV !== 'test') {
+  main().catch(err => {
+    console.error('Uncaught fatal error:', err.message);
+    process.exit(1);
+  });
+}
+/* v8 ignore stop */

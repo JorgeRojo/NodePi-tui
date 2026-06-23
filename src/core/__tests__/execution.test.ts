@@ -52,9 +52,64 @@ describe('Execution Engine', () => {
         '/dest/path/',
       ]);
     });
+
+    test('should handle paths already ending with a slash', async () => {
+      await runRsync('/src/path/', '/dest/path/');
+
+      expect(execa).toHaveBeenCalledWith('rsync', [
+        '-ax',
+        '--delete',
+        '--exclude',
+        'node_modules',
+        '--exclude',
+        '.git',
+        '--exclude',
+        '.nodepi',
+        '/src/path/',
+        '/dest/path/',
+      ]);
+    });
+
+    test('should log stdout and stderr if rsync outputs them', async () => {
+      vi.mocked(execa).mockResolvedValue({
+        stdout: '  rsync stdout line  ',
+        stderr: '  rsync stderr line  ',
+      } as any);
+
+      await runRsync('/src/path', '/dest/path');
+    });
   });
 
   describe('patchEntrypoint', () => {
+    test('should return false if package.json does not exist', async () => {
+      const nonExistentDir = path.join(tempDir, 'does-not-exist');
+      const patched = await patchEntrypoint(nonExistentDir, 'dist');
+      expect(patched).toBe(false);
+    });
+
+    test('should patch package.json if main points to a non-existent file and index.js exists in outDir', async () => {
+      const depDir = path.join(tempDir, 'my-dep-invalid-main');
+      await fs.mkdir(path.join(depDir, 'dist'), { recursive: true });
+      await fs.writeFile(
+        path.join(depDir, 'package.json'),
+        JSON.stringify({ name: 'my-dep-invalid-main', main: 'non-existent.js' })
+      );
+      await fs.writeFile(
+        path.join(depDir, 'dist', 'index.js'),
+        'console.log("built");'
+      );
+
+      const patched = await patchEntrypoint(depDir, 'dist');
+      expect(patched).toBe(true);
+
+      const content = await fs.readFile(
+        path.join(depDir, 'package.json'),
+        'utf-8'
+      );
+      const pkg = JSON.parse(content);
+      expect(pkg.main).toBe('dist/index.js');
+    });
+
     test('should patch package.json if main is empty and index.js exists in outDir', async () => {
       const depDir = path.join(tempDir, 'my-dep');
       await fs.mkdir(path.join(depDir, 'dist'), { recursive: true });
@@ -100,9 +155,29 @@ describe('Execution Engine', () => {
       const pkg = JSON.parse(content);
       expect(pkg.main).toBe('index.js');
     });
+
+    test('should return false if main is empty and index.js does not exist in outDir or package root', async () => {
+      const depDir = path.join(tempDir, 'my-dep-empty');
+      await fs.mkdir(depDir, { recursive: true });
+      await fs.writeFile(
+        path.join(depDir, 'package.json'),
+        JSON.stringify({ name: 'my-dep-empty', main: '' })
+      );
+
+      const patched = await patchEntrypoint(depDir, 'dist');
+      expect(patched).toBe(false);
+    });
   });
 
   describe('Vite Config Wrapper', () => {
+    test('should not throw and skip restoration if backup Vite config does not exist', async () => {
+      const nonExistentConfig = path.join(tempDir, 'vite.config.ts');
+      // Should not throw
+      await expect(
+        restoreViteWrapper(nonExistentConfig)
+      ).resolves.not.toThrow();
+    });
+
     test('should rename config and write wrapper importing the original', async () => {
       const viteConfigPath = path.join(tempDir, 'vite.config.ts');
       await fs.writeFile(viteConfigPath, 'export default { plugins: [] };');

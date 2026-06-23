@@ -169,4 +169,149 @@ describe('BackupRestoreManager', () => {
     expect(fs.existsSync(path.join(backupDir, 'index.js'))).toBe(true);
     expect(fs.existsSync(depDir)).toBe(false); // Original should be removed
   });
+
+  test('should fall back to cpSync + rmSync if renameSync fails with EXDEV during restore', () => {
+    const nodeModulesDir = path.join(tempDir, 'node_modules');
+    const depDir = path.join(nodeModulesDir, 'restore-exdev-dep');
+    fs.mkdirSync(depDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(depDir, 'index.js'),
+      'console.log("exdev-restore");'
+    );
+
+    // Backup normally
+    manager.backup(['restore-exdev-dep'], null);
+
+    // Mock renameSync to fail with EXDEV on restore
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      const err = new Error('EXDEV error') as any;
+      err.code = 'EXDEV';
+      throw err;
+    });
+
+    // Restore should fall back to cpSync and rmSync and succeed
+    expect(() => manager.restore()).not.toThrow();
+
+    renameSpy.mockRestore();
+
+    expect(fs.existsSync(path.join(depDir, 'index.js'))).toBe(true);
+    const content = fs.readFileSync(path.join(depDir, 'index.js'), 'utf-8');
+    expect(content).toContain('exdev-restore');
+  });
+
+  test('should rethrow non-EXDEV errors if renameSync fails during restore', () => {
+    const nodeModulesDir = path.join(tempDir, 'node_modules');
+    const depDir = path.join(nodeModulesDir, 'restore-fail-dep');
+    fs.mkdirSync(depDir, { recursive: true });
+    fs.writeFileSync(path.join(depDir, 'index.js'), 'original');
+
+    manager.backup(['restore-fail-dep'], null);
+
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw new Error('EACCES: permission denied');
+    });
+
+    expect(() => manager.restore()).toThrow('EACCES: permission denied');
+
+    renameSpy.mockRestore();
+  });
+
+  test('should log but not throw if cleanup fails during restore', () => {
+    const nodeModulesDir = path.join(tempDir, 'node_modules');
+    const depDir = path.join(nodeModulesDir, 'restore-cleanup-dep');
+    fs.mkdirSync(depDir, { recursive: true });
+    fs.writeFileSync(path.join(depDir, 'index.js'), 'original');
+
+    manager.backup(['restore-cleanup-dep'], null);
+
+    // Mock fs.rmSync during cleanup to throw an error
+    const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((path, options) => {
+      // Throw only when trying to delete the backups folder
+      if (typeof path === 'string' && path.includes('.nodepi')) {
+        throw new Error('cannot delete backups');
+      }
+      return undefined as any;
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => manager.restore()).not.toThrow();
+
+    rmSpy.mockRestore();
+    consoleSpy.mockRestore();
+  });
+
+  test('should abort restore if no backup metadata is found', () => {
+    // Ensure metadata file does not exist
+    const metaPath = (manager as any).metaPath;
+    if (fs.existsSync(metaPath)) {
+      fs.unlinkSync(metaPath);
+    }
+
+    expect(() => manager.restore()).not.toThrow();
+  });
+
+  test('should log but not throw if unlinking temp Vite backup config fails', () => {
+    const viteConfigPath = path.join(tempDir, 'vite.config.ts');
+    fs.writeFileSync(viteConfigPath, 'export default {};');
+
+    // Perform backup with Vite config
+    manager.backup([], viteConfigPath);
+
+    // Create the temporary wrapper backup config that unlinkSync will try to delete
+    // The name matches: filename.replace(/\.(ts|js|mjs|cjs)$/, '.backup.$1') -> vite.backup.config.ts
+    // Wait, path.basename(viteConfigPath) is "vite.config.ts".
+    // filename.replace(/\.(ts|js|mjs|cjs)$/, '.backup.$1') results in: "vite.config.backup.ts"!
+    // Let's check: filename is "vite.config.ts".
+    // filename.replace(/\.(ts|js|mjs|cjs)$/, '.backup.$1') matches ".ts" at the end, and replaces it with ".backup.ts".
+    // So "vite.config.ts" -> "vite.config.backup.ts"!
+    const backupConfigPath = path.join(tempDir, 'vite.config.backup.ts');
+    fs.writeFileSync(backupConfigPath, 'backup content');
+
+    // Mock unlinkSync to throw error for the backup config
+    const unlinkSpy = vi.spyOn(fs, 'unlinkSync').mockImplementation(path => {
+      if (typeof path === 'string' && path.includes('vite.config.backup.ts')) {
+        throw new Error('unlink failed');
+      }
+      return originalUnlink(path);
+    });
+
+    const originalUnlink = fs.unlinkSync;
+
+    expect(() => manager.restore()).not.toThrow();
+
+    unlinkSpy.mockRestore();
+  });
+
+  test('should log error and return null if reading backup metadata throws', () => {
+    // Mock hasBackup to return true so it enters the try-catch block in loadMetadata
+    const hasBackupSpy = vi.spyOn(manager, 'hasBackup').mockReturnValue(true);
+
+    const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
+      throw new Error('read error');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(manager.loadMetadata()).toBeNull();
+
+    hasBackupSpy.mockRestore();
+    readSpy.mockRestore();
+    consoleSpy.mockRestore();
+  });
+
+  test('should rethrow non-EXDEV errors if renameSync fails during backup', () => {
+    const nodeModulesDir = path.join(tempDir, 'node_modules');
+    const depDir = path.join(nodeModulesDir, 'fail-dep');
+    fs.mkdirSync(depDir, { recursive: true });
+
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw new Error('EACCES: permission denied');
+    });
+
+    expect(() => manager.backup(['fail-dep'], null)).toThrow(
+      'EACCES: permission denied'
+    );
+
+    renameSpy.mockRestore();
+  });
 });

@@ -126,7 +126,7 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
           description: 'Installs the project dependencies.',
         },
       ],
-      warnings: [],
+      warnings: ['Test project validation warning'],
     });
 
     // Default Configs
@@ -316,5 +316,92 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
     // Should NOT call config loading
     expect(configManager.loadGlobal).not.toHaveBeenCalled();
+  });
+
+  test('should abort with error if preflight check fails', async () => {
+    vi.mocked(runPreflight).mockRejectedValue(
+      new Error('Preflight check failed')
+    );
+
+    await runWizard();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('should abort with error if project validation fails without error message', async () => {
+    vi.mocked(validateProject).mockResolvedValue({
+      isValid: false,
+      packageManager: 'npm',
+      projectType: 'other',
+      scriptSequence: [],
+      warnings: [],
+    });
+
+    await runWizard();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('should exit 0 if no local dependencies match target package dependencies', async () => {
+    const mockGraph = new Map<string, string[]>();
+    vi.mocked(buildDependencyGraph).mockResolvedValue(mockGraph);
+
+    await runWizard();
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
+  test('should handle dependencies not in git or with version mismatch, intermediate deps, vite wrappers, and npm build command', async () => {
+    // Vite project with config
+    vi.mocked(runPreflight).mockResolvedValue({
+      isViteProject: true,
+      viteConfigPath: 'vite.config.ts',
+      hasAgy: true,
+    });
+
+    // Mock config load global with empty mode fallback
+    vi.mocked(configManager.load).mockResolvedValue({
+      dependencies: [],
+    } as any);
+
+    // Git Status is not inside a git repo
+    vi.mocked(getGitStatus).mockResolvedValue({
+      isGit: false,
+    } as any);
+
+    // Version mismatch
+    vi.mocked(getVersionMismatch).mockResolvedValue({
+      localVersion: '1.0.0',
+      targetVersion: '2.0.0',
+      hasMismatch: true,
+      type: 'major',
+    });
+
+    // Intermediate dependencies
+    vi.mocked(findIntermediateDependencies).mockReturnValue([
+      'lib-intermediate',
+    ]);
+
+    // Mock resolveBuildAndWatch to return npm build command
+    vi.mocked(resolveBuildAndWatch).mockResolvedValue({
+      buildScript: 'npm run build',
+      watchScript: 'watch',
+      outDir: 'dist',
+    });
+
+    // Make local packages map have both lib-core and lib-intermediate
+    const mockLocalPkgs = new Map<string, string>([
+      ['lib-core', '/my/projects/lib-core'],
+      ['lib-intermediate', '/my/projects/lib-intermediate'],
+    ]);
+    vi.mocked(scanContainers).mockResolvedValue(mockLocalPkgs);
+
+    await runWizard();
+
+    expect(execa).toHaveBeenCalledWith(
+      'npm',
+      ['run', 'build'],
+      expect.objectContaining({ cwd: '/my/projects/lib-core' })
+    );
   });
 });

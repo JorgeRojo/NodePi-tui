@@ -66,10 +66,12 @@ export class ScriptCache {
           hasher.update(`|${file}|${content}`);
         } catch {
           // Silently ignore if a file cannot be read
+          void 0;
         }
       }
     } catch {
       // Ignore if the directory cannot be read for some reason
+      void 0;
     }
 
     return hasher.digest('hex');

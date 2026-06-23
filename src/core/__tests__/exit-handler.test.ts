@@ -53,6 +53,16 @@ describe('Exit Handlers', () => {
     expect(onSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
   });
 
+  test('should register SIGINT and SIGTERM listeners only once', () => {
+    setupExitHandlers();
+    const callsBefore = onSpy.mock.calls.length;
+
+    setupExitHandlers();
+    const callsAfter = onSpy.mock.calls.length;
+
+    expect(callsAfter).toBe(callsBefore);
+  });
+
   test('should stop orchestrator, restore backups, and exit on SIGINT', async () => {
     setupExitHandlers();
 

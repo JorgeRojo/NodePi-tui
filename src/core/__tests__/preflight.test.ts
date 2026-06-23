@@ -100,6 +100,20 @@ describe('Preflight Checks', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
+  test('should exit if required tools (git) are missing', async () => {
+    // Mock execa to throw (missing tool) when checked for git
+    vi.mocked(execa).mockImplementation(((cmd: any, args: any) => {
+      if (args && args[0] === 'git') {
+        throw new Error('command not found');
+      }
+      return Promise.resolve({} as any);
+    }) as any);
+
+    await runPreflight();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
   test('should trigger restore if backup is found and user confirms', async () => {
     vi.mocked(backupRestoreManager.hasBackup).mockReturnValue(true);
     vi.mocked(confirm).mockResolvedValue(true);
@@ -116,5 +130,39 @@ describe('Preflight Checks', () => {
     await runPreflight();
 
     expect(backupRestoreManager.restore).not.toHaveBeenCalled();
+  });
+
+  test('should handle restore errors gracefully and exit with 1', async () => {
+    vi.mocked(backupRestoreManager.hasBackup).mockReturnValue(true);
+    vi.mocked(confirm).mockResolvedValue(true);
+    vi.mocked(backupRestoreManager.restore).mockImplementation(() => {
+      throw new Error('restore device busy');
+    });
+
+    await runPreflight();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('should exit if confirm prompt is cancelled/aborted (returns symbol)', async () => {
+    vi.mocked(backupRestoreManager.hasBackup).mockReturnValue(true);
+    vi.mocked(confirm).mockResolvedValue(Symbol('cancel'));
+
+    await runPreflight();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('should set hasAgy false if agy tool check throws', async () => {
+    vi.mocked(execa).mockImplementation(((cmd: any, args: any) => {
+      if (args && args[0] === 'agy') {
+        throw new Error('not found');
+      }
+      return Promise.resolve({} as any);
+    }) as any);
+
+    const result = await runPreflight();
+    expect(result.hasAgy).toBe(false);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

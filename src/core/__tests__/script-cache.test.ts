@@ -134,4 +134,73 @@ describe('ScriptCache', () => {
     retrieved = await cache.get(pkgPath, pkgJson2);
     expect(retrieved).toBeNull();
   });
+
+  test('should load cache from disk on fresh instance', async () => {
+    const pkgPath = path.join(tempDir, 'dummy-pkg');
+    await fs.mkdir(pkgPath, { recursive: true });
+    const pkgJson = { name: 'dummy-pkg', scripts: { build: 'tsc' } };
+    const analysisResult = {
+      buildScript: 'build',
+      watchScript: null,
+      outDir: 'dist',
+    };
+
+    // Set value in first cache instance
+    await cache.set(pkgPath, pkgJson, analysisResult);
+
+    // Create a new instance, which should load from disk
+    const freshCache = new ScriptCache();
+    const retrieved = await freshCache.get(pkgPath, pkgJson);
+    expect(retrieved).toEqual(analysisResult);
+  });
+
+  test('should handle directory read error in computeHash gracefully', async () => {
+    const nonExistentPkgPath = path.join(tempDir, 'non-existent-pkg-dir');
+    const pkgJson = { name: 'non-existent', scripts: {} };
+    const result = { buildScript: 'build', watchScript: null, outDir: 'dist' };
+    // Should compute a hash even if folder doesn't exist (triggers directory read catch block)
+    await expect(
+      cache.set(nonExistentPkgPath, pkgJson, result)
+    ).resolves.not.toThrow();
+  });
+
+  test('should handle file read error in computeHash gracefully', async () => {
+    const pkgPath = path.join(tempDir, 'file-read-error-pkg');
+    await fs.mkdir(pkgPath, { recursive: true });
+
+    // Create tsconfig.json as a directory, which makes fs.readFile throw EISDIR
+    await fs.mkdir(path.join(pkgPath, 'tsconfig.json'));
+
+    const pkgJson = { name: 'file-read-error-pkg', scripts: {} };
+    const result = { buildScript: 'build', watchScript: null, outDir: 'dist' };
+    await expect(cache.set(pkgPath, pkgJson, result)).resolves.not.toThrow();
+  });
+
+  test('should rethrow unexpected errors in loadCache', async () => {
+    const readFileSpy = vi
+      .spyOn(fs, 'readFile')
+      .mockRejectedValue(new Error('unexpected error'));
+
+    const pkgJson = { name: 'dummy-pkg', scripts: {} };
+    await expect(cache.get('/some/path', pkgJson)).rejects.toThrow(
+      'unexpected error'
+    );
+
+    readFileSpy.mockRestore();
+  });
+
+  test('should fallback to empty object if package.json has no scripts key', async () => {
+    const pkgPath = path.join(tempDir, 'no-scripts-pkg');
+    await fs.mkdir(pkgPath, { recursive: true });
+    // packageJson with no scripts property
+    const pkgJson = { name: 'no-scripts' };
+    const result = { buildScript: 'build', watchScript: null, outDir: 'dist' };
+
+    await expect(cache.set(pkgPath, pkgJson, result)).resolves.not.toThrow();
+  });
+
+  test('should return early in saveCache if memoryCache is null/falsy', async () => {
+    (cache as any).memoryCache = null;
+    await expect((cache as any).saveCache()).resolves.not.toThrow();
+  });
 });

@@ -121,7 +121,10 @@ describe('Project Validator', () => {
     vi.mocked(fs.readFile).mockResolvedValue(
       JSON.stringify({
         name: 'custom-project',
+        dependencies: { lodash: '^4.17.21' },
+        devDependencies: { typescript: '^5.0.0' },
         scripts: {
+          setup: 'yarn setup',
           start: 'node index.js',
         },
       })
@@ -160,13 +163,36 @@ describe('Project Validator', () => {
     );
     expect(result.scriptSequence).toEqual([
       {
-        command: 'yarn install',
-        description: 'Install dependencies',
+        command: 'npm run setup',
+        description:
+          'Initializes and configures the project for development (includes all necessary preparation and installation logic).',
       },
     ]);
   });
 
-  test('should exit process with code 1 if agy fails and hasAgy is true', async () => {
+  test('should exit process with code 1 if agy fails and hasAgy is true (with stdout/stderr)', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockResolvedValue(['package.json'] as any);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        name: 'custom-project',
+        scripts: {
+          start: 'node index.js',
+        },
+      })
+    );
+
+    const mockErr = new Error('Agy timed out') as any;
+    mockErr.stdout = 'stdout logs';
+    mockErr.stderr = 'stderr logs';
+    vi.mocked(execa).mockRejectedValue(mockErr);
+
+    await validateProject('/test-path', true);
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('should exit process with code 1 if agy fails and hasAgy is true (without stdout/stderr)', async () => {
     vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
     vi.mocked(fs.readdir).mockResolvedValue(['package.json'] as any);
     vi.mocked(fs.readFile).mockResolvedValue(
@@ -356,5 +382,172 @@ describe('Project Validator', () => {
         description: 'Installs the project dependencies.',
       },
     ]);
+  });
+
+  test('should use setup script in other project type fallback sequence if present', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockResolvedValue(['package.json'] as any);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        name: 'other-project',
+        scripts: {
+          setup: 'echo "setup"',
+        },
+      })
+    );
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(true);
+    expect(result.projectType).toBe('other');
+    expect(result.scriptSequence).toEqual([
+      {
+        command: 'npm run setup',
+        description: 'Initializes and configures the project.',
+      },
+    ]);
+  });
+
+  test('should use install:dependencies and conf script in other project type fallback sequence if present', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockResolvedValue(['package.json'] as any);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        name: 'other-project',
+        scripts: {
+          'install:dependencies': 'echo "install-deps"',
+          conf: 'echo "conf"',
+        },
+      })
+    );
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(true);
+    expect(result.projectType).toBe('other');
+    expect(result.scriptSequence).toEqual([
+      {
+        command: 'npm run install:dependencies',
+        description: 'Installs the project dependencies.',
+      },
+      {
+        command: 'npm run conf',
+        description: 'Downloads the development API configurations.',
+      },
+    ]);
+  });
+
+  test('should detect conf script in standard-vite project when setup is not present', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockResolvedValue([
+      'package.json',
+      'vite.config.ts',
+    ] as any);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        name: 'vite-project',
+        dependencies: {
+          vite: '^4.0.0',
+        },
+        scripts: {
+          conf: 'vite-config-download',
+          build: 'vite build',
+        },
+      })
+    );
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(true);
+    expect(result.packageManager).toBe('npm');
+    expect(result.projectType).toBe('standard-vite');
+    expect(result.scriptSequence).toEqual([
+      {
+        command: 'npm install',
+        description: 'Installs the project dependencies.',
+      },
+      {
+        command: 'npm run conf',
+        description: 'Downloads the development API configurations.',
+      },
+    ]);
+  });
+
+  test('should handle readdir failure gracefully', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockRejectedValue(new Error('Permission denied'));
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        name: 'test-project',
+        scripts: {
+          start: 'node index.js',
+        },
+      })
+    );
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(true);
+    expect(result.packageManager).toBe('npm');
+    expect(result.scriptSequence).toEqual([
+      {
+        command: 'npm install',
+        description: 'Installs the project dependencies.',
+      },
+    ]);
+  });
+
+  test('should detect npm project with package-lock.json lockfile', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockResolvedValue([
+      'package.json',
+      'package-lock.json',
+    ] as any);
+    vi.mocked(fs.readFile).mockResolvedValue(
+      JSON.stringify({
+        name: 'test-project',
+        scripts: {
+          start: 'node index.js',
+        },
+      })
+    );
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(true);
+    expect(result.packageManager).toBe('npm');
+  });
+
+  test('should fail if package.json is not a file', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => false } as any);
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain('Could not find package.json');
+  });
+
+  test('should handle agy response with fallback values', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readdir).mockResolvedValue(['package.json'] as any);
+    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({}));
+
+    vi.mocked(execa).mockResolvedValue({
+      stdout: JSON.stringify({
+        sequence: [
+          {
+            command: 'npm install',
+            description: 'Install dependencies',
+          },
+        ],
+      }),
+    } as any);
+
+    const result = await validateProject('/test-path', true);
+    expect(result.isValid).toBe(true);
+    expect(result.projectType).toBe('other');
+  });
+
+  test('should handle non-Error exceptions when reading package.json', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
+    vi.mocked(fs.readFile).mockRejectedValue('Raw string error');
+
+    const result = await validateProject('/test-path', false);
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain('Raw string error');
   });
 });

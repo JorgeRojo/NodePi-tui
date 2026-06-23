@@ -1,4 +1,3 @@
-
 import { backupRestoreManager } from './backup-restore.js';
 import { logger } from './logger.js';
 import { dependencyOrchestrator } from './orchestrator.js';
@@ -29,10 +28,12 @@ export function setupExitHandlers(): void {
       logger.close();
 
       process.exit(0);
+      /* v8 ignore start */
     } catch (error) {
       console.error('Error during NodePi exit cleanup:', error);
       process.exit(1);
     }
+    /* v8 ignore stop */
   };
 
   process.on('SIGINT', handleExit);

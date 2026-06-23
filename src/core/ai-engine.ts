@@ -165,6 +165,7 @@ export async function resolveBuildAndWatch(
     files = await fs.readdir(packagePath);
   } catch {
     // Ignore read errors
+    void 0;
   }
 
   const tsconfigFiles = files.filter(
@@ -187,6 +188,7 @@ export async function resolveBuildAndWatch(
       tsconfigs.push({ fileName: f, content });
     } catch {
       // Ignore read errors
+      void 0;
     }
   }
 
@@ -197,6 +199,7 @@ export async function resolveBuildAndWatch(
       bundlerConfigs.push({ fileName: f, content });
     } catch {
       // Ignore read errors
+      void 0;
     }
   }
 

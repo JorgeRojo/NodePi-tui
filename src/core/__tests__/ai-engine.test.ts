@@ -86,6 +86,29 @@ describe('AI Inference Engine & Heuristics', () => {
       expect(prompt).toContain('vite.config.ts');
       expect(prompt).toContain('export default {}');
     });
+
+    test('should include dependencies and devDependencies in prompt if present', async () => {
+      const packageJson = {
+        name: 'my-lib',
+        scripts: {},
+        dependencies: { lodash: '^4.17.21' },
+        devDependencies: { typescript: '^5.0.0' },
+      };
+
+      const prompt = await buildAgyPrompt('my-lib', packageJson, [], []);
+      expect(prompt).toContain('"dependencies": [\n    "lodash"\n  ]');
+      expect(prompt).toContain('"devDependencies": [\n    "typescript"\n  ]');
+    });
+
+    test('should fallback to empty scripts object if packageJson.scripts is missing', async () => {
+      const packageJson = {
+        name: 'my-lib',
+        // No scripts key
+      };
+
+      const prompt = await buildAgyPrompt('my-lib', packageJson, [], []);
+      expect(prompt).toContain('"scripts": {}');
+    });
   });
 
   describe('parseAgyResponse', () => {
@@ -108,19 +131,26 @@ Hope this helps!`;
       });
     });
 
-    test('should fall back to parsing raw string if markdown code blocks are absent', () => {
+    test('should map string "null" to actual null for buildScript and watchScript', () => {
       const response = `{
-        "buildScript": "build",
-        "watchScript": null,
+        "buildScript": "null",
+        "watchScript": "null",
         "outDir": "dist"
       }`;
 
       const result = parseAgyResponse(response);
-      expect(result).toEqual({
-        buildScript: 'build',
-        watchScript: null,
-        outDir: 'dist',
-      });
+      expect(result.buildScript).toBeNull();
+      expect(result.watchScript).toBeNull();
+    });
+
+    test('should fallback to dot if outDir is missing/falsy in response', () => {
+      const response = `{
+        "buildScript": "build",
+        "watchScript": null
+      }`;
+
+      const result = parseAgyResponse(response);
+      expect(result.outDir).toBe('.');
     });
 
     test('should throw error on invalid JSON', () => {
@@ -130,6 +160,19 @@ Hope this helps!`;
   });
 
   describe('validateAnalysisResult (Hallucination Guard)', () => {
+    test('should default to empty scripts object if packageJson.scripts is missing', () => {
+      const packageJson = {}; // no scripts
+      const result: ScriptAnalysisResult = {
+        buildScript: 'build',
+        watchScript: null,
+        outDir: 'dist',
+      };
+
+      const validated = validateAnalysisResult(result, packageJson);
+      // Since scripts is missing, "build" is considered a hallucination and is set to null
+      expect(validated.buildScript).toBeNull();
+    });
+
     test('should keep valid scripts and fallback invalid ones to null', () => {
       const packageJson = {
         scripts: {
@@ -156,6 +199,18 @@ Hope this helps!`;
         buildScript: null,
         watchScript: null,
         outDir: '',
+      };
+
+      const validated = validateAnalysisResult(result, packageJson);
+      expect(validated.outDir).toBe('.');
+    });
+
+    test('should default outDir to dot if it is /', () => {
+      const packageJson = { scripts: {} };
+      const result: ScriptAnalysisResult = {
+        buildScript: null,
+        watchScript: null,
+        outDir: '/',
       };
 
       const validated = validateAnalysisResult(result, packageJson);
@@ -255,14 +310,33 @@ Hope this helps!`;
       expect(result.outDir).toBe('dist');
     });
 
-    test('should exit process with code 1 if agy fails and hasAgy is true', async () => {
-      // Mock agy throwing error
-      vi.mocked(execa).mockRejectedValue(
-        new Error('Command timed out after 45000 milliseconds')
-      );
+    test('should exit process with code 1 if agy fails and hasAgy is true (with stdout/stderr logs)', async () => {
+      // Mock agy throwing error with stdout/stderr properties
+      const rejectErr = new Error(
+        'Command timed out after 45000 milliseconds'
+      ) as any;
+      rejectErr.stdout = 'agy stdout error details';
+      rejectErr.stderr = 'agy stderr error details';
+      vi.mocked(execa).mockRejectedValue(rejectErr);
 
       const pkgJson = {
         name: 'my-lib',
+        scripts: {
+          build: 'tsc',
+        },
+      };
+
+      await resolveBuildAndWatch(tempDir, pkgJson, true);
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    test('should exit process with code 1 if agy fails and hasAgy is true (without stdout/stderr logs and with default library name)', async () => {
+      // Mock agy throwing clean error
+      vi.mocked(execa).mockRejectedValue(new Error('Simple exec error'));
+
+      const pkgJson = {
+        // No name
         scripts: {
           build: 'tsc',
         },
@@ -297,6 +371,98 @@ Hope this helps!`;
       expect(execa).not.toHaveBeenCalled();
       expect(fallbackMock).toHaveBeenCalled();
       expect(result.buildScript).toBe('build-fallback');
+    });
+
+    test('should fallback to safe heuristics if hasAgy is false and no promptFallback is provided', async () => {
+      const pkgJson = {
+        name: 'my-lib',
+        scripts: {
+          build: 'tsc',
+        },
+      };
+
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, false);
+      expect(result).toEqual({
+        buildScript: null,
+        watchScript: null,
+        outDir: '.',
+      });
+    });
+
+    test('should fallback to tsc -w -p ./tsconfig.json if tsconfig.json is present and watch is null', async () => {
+      await fs.writeFile(path.join(tempDir, 'tsconfig.json'), '{}');
+
+      const pkgJson = {
+        name: 'my-lib',
+        scripts: {
+          build: 'tsc',
+        },
+      };
+
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, false);
+      expect(result.watchScript).toBe('tsc -w -p ./tsconfig.json');
+    });
+
+    test('should fallback to first custom tsconfig found if no tsconfig.json/build exists', async () => {
+      await fs.writeFile(path.join(tempDir, 'tsconfig.custom.json'), '{}');
+
+      const pkgJson = {
+        name: 'my-lib',
+        scripts: {
+          build: 'tsc',
+        },
+      };
+
+      const result = await resolveBuildAndWatch(tempDir, pkgJson, false);
+      expect(result.watchScript).toBe('tsc -w -p ./tsconfig.custom.json');
+    });
+
+    test('should read config and bundler files successfully during prompt building', async () => {
+      await fs.writeFile(
+        path.join(tempDir, 'tsconfig.json'),
+        '{"compilerOptions":{}}'
+      );
+      await fs.writeFile(
+        path.join(tempDir, 'vite.config.ts'),
+        'export default {}'
+      );
+
+      const pkgJson = { name: 'my-lib', scripts: {} };
+      // Run resolution (calling resolveBuildAndWatch which builds prompt under the hood if hasAgy = true)
+      vi.mocked(execa).mockResolvedValue({
+        stdout: '{"buildScript":"build","watchScript":null,"outDir":"dist"}',
+      } as any);
+
+      await resolveBuildAndWatch(tempDir, pkgJson, true);
+      expect(execa).toHaveBeenCalled();
+    });
+
+    test('should handle read errors for config and bundler files gracefully', async () => {
+      // Create tsconfig.json and vite.config.ts as folders to force fs.readFile throw EISDIR
+      await fs.mkdir(path.join(tempDir, 'tsconfig.json'), { recursive: true });
+      await fs.mkdir(path.join(tempDir, 'vite.config.ts'), { recursive: true });
+
+      const pkgJson = { name: 'my-lib', scripts: {} };
+      vi.mocked(execa).mockResolvedValue({
+        stdout: '{"buildScript":"build","watchScript":null,"outDir":"dist"}',
+      } as any);
+
+      await expect(
+        resolveBuildAndWatch(tempDir, pkgJson, true)
+      ).resolves.not.toThrow();
+    });
+
+    test('should handle directory read error in resolveBuildAndWatch gracefully', async () => {
+      const nonExistentDir = path.join(tempDir, 'does-not-exist-dir');
+      const pkgJson = { name: 'my-lib', scripts: {} };
+      vi.mocked(execa).mockResolvedValue({
+        stdout: '{"buildScript":"build","watchScript":null,"outDir":"dist"}',
+      } as any);
+
+      // Should not throw, should handle directory read error internally
+      await expect(
+        resolveBuildAndWatch(nonExistentDir, pkgJson, true)
+      ).resolves.not.toThrow();
     });
   });
 });
