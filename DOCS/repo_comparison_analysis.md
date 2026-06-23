@@ -1,92 +1,92 @@
-# Análisis Comparativo: Repositorios Reales vs. Plan NodePi
+# Comparative Analysis: Real Repositories vs. NodePi Plan
 
-He realizado un análisis profundo y exhaustivo de los **69 directorios** del workspace `/Users/jorge/projects/frontend-repos`. Este informe compara las características físicas reales de la base de código con el plan actual de NodePi, identificando discrepancias de diseño críticas que debemos solucionar para evitar fallos catastróficos al usar la herramienta.
+I have performed a deep and comprehensive analysis of the **69 directories** in the `/Users/jorge/projects/frontend-repos` workspace. This report compares the actual physical characteristics of the codebase with the current plan of NodePi, identifying critical design discrepancies that we must resolve to avoid catastrophic failures when using the tool.
 
 ---
 
-## 📊 Estadísticas Reales del Workspace
+## 📊 Real Workspace Statistics
 
-De las 69 carpetas escaneadas, **65 son proyectos de Node válidos** (tienen un `package.json` legible). Los resultados agregados son los siguientes:
+Of the 69 scanned folders, **65 are valid Node projects** (they have a readable `package.json`). The aggregated results are as follows:
 
-### 1. Control de Versiones y Git
+### 1. Version Control and Git
 
-- **Proyectos Git**: 65 de 65 (100%).
-- **Upstream/Remote configurado**: 65 de 65 (100%).
-- **Conclusión**: El _Git Guard_ propuesto es totalmente compatible con el entorno, pero debemos mantener los resguardos para proyectos locales nuevos.
+- **Git Projects**: 65 out of 65 (100%).
+- **Configured Upstream/Remote**: 65 out of 65 (100%).
+- **Conclusion**: The proposed _Git Guard_ is fully compatible with the environment, but we must maintain safeguards for new local projects.
 
-### 2. Gestor de Paquetes
+### 2. Package Manager
 
-- **Yarn (`yarn.lock`)**: 65 de 65 (100%).
-- **pnpm / npm**: 0 de 65 (0%).
-- **Conclusión**: **Advertencia Crítica**. Todos los proyectos usan Yarn. La inyección de NodePi forzará la creación de `pnpm-lock.yaml` en el proyecto destino para poder resolver las inyecciones físicas. El warning de colisión en el Preflight es indispensable y siempre se disparará.
+- **Yarn (`yarn.lock`)**: 65 out of 65 (100%).
+- **pnpm / npm**: 0 out of 65 (0%).
+- **Conclusion**: **Critical Warning**. All projects use Yarn. NodePi's injection will force the creation of `pnpm-lock.yaml` in the target project in order to resolve the physical injections. The collision warning in Preflight is essential and will always be triggered.
 
-### 3. TypeScript y Configuraciones
+### 3. TypeScript and Configurations
 
-- **Proyectos con `tsconfig.json`**: 32 (Aprox 50%).
-- **Archivos TSConfig alternativos**:
-  - La gran mayoría de los conectores y librerías TS tienen **múltiples archivos tsconfig** (ej. `tsconfig.json` y `tsconfig.build.json` o `tsconfig.base.json`).
-  - Ejemplo: `actor-networks-restapi-connector` tiene `tsconfig.json` (desarrollo/tests) y `tsconfig.build.json` (para empaquetado de producción).
+- **Projects with `tsconfig.json`**: 32 (Approx 50%).
+- **Alternative TSConfig files**:
+  - The vast majority of TS connectors and libraries have **multiple tsconfig files** (e.g., `tsconfig.json` and `tsconfig.build.json` or `tsconfig.base.json`).
+  - Example: `actor-networks-restapi-connector` has `tsconfig.json` (development/tests) and `tsconfig.build.json` (for production packaging).
 
 ### 4. Bundlers
 
-- **Vite**: 7 proyectos (Backoffice, Dashboards, Front-common-rp10, Front-components-rp10, Front-rp10, Frontoffice, Myaccount).
-- **Webpack**: 4 proyectos.
-- **Rollup**: 2 proyectos.
-- **Babel**: 5 proyectos.
-- **Sin Bundler Explícito (tsc puro / JS vanilla)**: 51 proyectos (78% de la base).
+- **Vite**: 7 projects (Backoffice, Dashboards, Front-common-rp10, Front-components-rp10, Front-rp10, Frontoffice, Myaccount).
+- **Webpack**: 4 projects.
+- **Rollup**: 2 projects.
+- **Babel**: 5 projects.
+- **No Explicit Bundler (pure tsc / vanilla JS)**: 51 projects (78% of the codebase).
 
-### 5. Scripts de Compilación
+### 5. Build Scripts
 
-- **Tienen script de watch**: 56 proyectos (86%).
-- **Tienen script de build**: 40 proyectos (61%).
-- **Sin script de watch ni build**: 7 proyectos (conectores/librerías que usan scripts customizados como `dist`).
+- **Have a watch script**: 56 projects (86%).
+- **Have a build script**: 40 projects (61%).
+- **No watch or build script**: 7 projects (connectors/libraries that use customized scripts like `dist`).
 
 ---
 
-## 🔍 Discrepancias Críticas Detectadas (Realidad vs. Plan)
+## 🔍 Critical Discrepancies Detected (Reality vs. Plan)
 
-Comparando el estado real del código contra el plan de NodePi, han surgido **3 nuevos vacíos arquitectónicos** que la aplicación debe resolver:
+Comparing the real state of the code against the NodePi plan, **3 new architectural gaps** have emerged that the application must resolve:
 
-### Discrepancia 1: El Hash de la Caché ignora TSConfigs Auxiliares
+### Discrepancy 1: Cache Hash ignores Auxiliary TSConfigs
 
-> [!NOTE] **El problema**: El plan original de caching escaneaba solo `tsconfig.json`. Sin embargo, casi todos los conectores de RedPoints compilan usando `tsconfig.build.json` (ej: `tsc -p ./tsconfig.build.json`).
+> [!NOTE] **The problem**: The original caching plan scanned only `tsconfig.json`. However, almost all RedPoints connectors compile using `tsconfig.build.json` (e.g., `tsc -p ./tsconfig.build.json`).
 >
-> **✅ RESUELTO**: Se actualizó `script-cache.ts` para buscar cualquier archivo que coincida con `tsconfig*.json` (`f.startsWith('tsconfig') && f.endsWith('.json')`).
+> **✅ RESOLVED**: `script-cache.ts` was updated to search for any file matching `tsconfig*.json` (`f.startsWith('tsconfig') && f.endsWith('.json')`).
 
-### Discrepancia 2: Proyectos de TypeScript sin Script de Watch
+### Discrepancy 2: TypeScript Projects without a Watch Script
 
-> [!IMPORTANT] **El problema**: Siete librerías críticas (como `redpoints-front-testing`, `redpoints-front-translate`, `redpoints-front-qdeveloper-rules`) carecen por completo de un script `"watch"` en su `package.json`. No obstante, sí son TypeScript y compilan mediante un script de build llamado `"dist"` que corre `tsc -p ./tsconfig.build.json`.
+> [!IMPORTANT] **The problem**: Seven critical libraries (such as `redpoints-front-testing`, `redpoints-front-translate`, `redpoints-front-qdeveloper-rules`) completely lack a `"watch"` script in their `package.json`. However, they are TypeScript and compile via a build script named `"dist"` that runs `tsc -p ./tsconfig.build.json`.
 >
-> **La Solución**: Si un paquete es TypeScript (tiene archivos `tsconfig*.json`) y el plan de NodePi requiere Sync pero no tiene script `watch`, el motor de fallback debe saltarse la IA y ejecutar automáticamente el compilador nativo en modo watch:
+> **The Solution**: If a package is TypeScript (has `tsconfig*.json` files) and the NodePi plan requires Sync but it doesn't have a `watch` script, the fallback engine must bypass the AI and automatically run the native compiler in watch mode:
 >
 > ```bash
-> tsc -w -p ./tsconfig.build.json # (o tsconfig.json si es el único disponible)
+> tsc -w -p ./tsconfig.build.json # (or tsconfig.json if it is the only one available)
 > ```
 
-### Discrepancia 3: Estructura de Publicación Desacoplada (La gran discrepancia)
+### Discrepancy 3: Decoupled Publishing Structure (The major discrepancy)
 
-> [!NOTE] **El problema**: 60 de los 65 proyectos analizados tienen `"main": ""` (vacío) en el `package.json` de su repositorio raíz. RedPoints utiliza un patrón de empaquetado donde `yarn dist` compila a `dist/`, copia el `package.json` dentro de `dist/`, y hace `yarn pack` desde dentro de `dist/`.
+> [!NOTE] **The problem**: 60 out of the 65 analyzed projects have `"main": ""` (empty) in their root repository `package.json`. RedPoints uses a packaging pattern where `yarn dist` compiles to `dist/`, copies the `package.json` into `dist/`, and runs `yarn pack` from within `dist/`.
 >
-> **✅ RESUELTO — Opción A (Modificación Dinámica)**: Tras el `rsync` inicial, NodePi lee el `package.json` en `node_modules/<dep>/`. Si `"main"` está vacío y existe un `outDir` con `index.js`, NodePi parchea temporalmente ese `package.json` (solo la copia en `node_modules/`, nunca el fuente) para establecer `"main": "<outDir>/index.js"`. El parche se deshace durante la restauración.
+> **✅ RESOLVED — Option A (Dynamic Modification)**: After the initial `rsync`, NodePi reads the `package.json` in `node_modules/<dep>/`. If `"main"` is empty and an `outDir` with `index.js` exists, NodePi temporarily patches that `package.json` (only the copy in `node_modules/`, never the source) to set `"main": "<outDir>/index.js"`. The patch is reversed during restoration.
 
 ---
 
-## ⚙️ Modificaciones Aplicadas al Plan
+## ⚙️ Modifications Applied to the Plan
 
-Todas las discrepancias han sido resueltas e integradas en la documentación principal:
+All discrepancies have been resolved and integrated into the main documentation:
 
-### ✅ Cache — `tsconfig*.json` glob aplicado
+### ✅ Cache — `tsconfig*.json` glob applied
 
-El código de `script-cache.ts` ahora usa `f.startsWith('tsconfig') && f.endsWith('.json')` para capturar todos los archivos TSConfig auxiliares (`tsconfig.build.json`, `tsconfig.base.json`, etc.).
+The code in `script-cache.ts` now uses `f.startsWith('tsconfig') && f.endsWith('.json')` to capture all auxiliary TSConfig files (`tsconfig.build.json`, `tsconfig.base.json`, etc.).
 
 ### ✅ TSC Watch Auto-Fallback
 
-Para paquetes TypeScript sin script `watch`, NodePi genera automáticamente `tsc -w -p ./tsconfig.build.json` (o `tsconfig.json` si es el único disponible).
+For TypeScript packages without a `watch` script, NodePi automatically generates `tsc -w -p ./tsconfig.build.json` (or `tsconfig.json` if it is the only one available).
 
-### ✅ Entrypoint Patching (Opción A)
+### ✅ Entrypoint Patching (Option A)
 
-Después del `rsync`, si `"main"` está vacío en `node_modules/<dep>/package.json` y existe `<outDir>/index.js`, NodePi parchea ese `package.json` con `"main": "<outDir>/index.js"`. Solo modifica la copia en `node_modules/`, nunca el fuente.
+After `rsync`, if `"main"` is empty in `node_modules/<dep>/package.json` and `<outDir>/index.js` exists, NodePi patches that `package.json` with `"main": "<outDir>/index.js"`. It only modifies the copy in `node_modules/`, never the source.
 
-### ✅ Arquitectura PM-Agnostic
+### ✅ PM-Agnostic Architecture
 
-El plan original dependía de `pnpm install` e `injected: true`, mecanismos que solo funcionan en pnpm workspaces. Se rediseñó la arquitectura para usar **rsync directo** sobre las carpetas de `node_modules/` ya instaladas por el package manager nativo del proyecto (Yarn, npm, pnpm). Ver `specs.md` §1.2 y `implementation_plan.md` §1 para la nueva especificación.
+The original plan relied on `pnpm install` and `injected: true`, mechanisms that only work in pnpm workspaces. The architecture was redesigned to use **direct rsync** over the `node_modules/` folders already installed by the target project's native package manager (Yarn, npm, pnpm). See `specs.md` §1.2 and `implementation_plan.md` §1 for the new specification.

@@ -33,8 +33,8 @@ Getting Vite to perform Hot Module Replacement on files inside `node_modules` is
 - Watches your local dependency source folder.
 - On change, `rsync` copies the package (excluding `node_modules` and `.git`) directly into the target's resolved `node_modules/.pnpm/...` path.
 - The CLI automatically generates a Vite wrapper: it temporarily renames the user's `vite.config.[ext]` to `vite.config.backup.[ext]` and writes a wrapper `vite.config.[ext]` that imports their real config and injects:
-  - `optimizeDeps.exclude: ['tu-paquete']` (Stops Vite from caching it).
-  - `server.watch.ignored: ['!**/node_modules/tu-paquete/**']` (Forces Vite's watcher to look inside node_modules).
+  - `optimizeDeps.exclude: ['your-package']` (Stops Vite from caching it).
+  - `server.watch.ignored: ['!**/node_modules/your-package/**']` (Forces Vite's watcher to look inside node_modules).
 - The user runs their project dev server normally in another terminal without modifications. Upon exit, `nodepi` instantly restores the original config file.
 
 ---

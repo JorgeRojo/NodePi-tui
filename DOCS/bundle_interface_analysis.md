@@ -1,84 +1,84 @@
-# Documentación Completa del Caso: Desarrollo Local y Bundling (RP10)
+# Comprehensive Case Documentation: Local Development and Bundling (RP10)
 
-Este documento detalla de manera exhaustiva el funcionamiento del entorno de desarrollo aislado y compilación (bundling) utilizado por los módulos de RedPoints RP10, tomando como base la interacción entre [redpoints-front-documents-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-documents-rp10) y [redpoints-front-bundle-interface-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10).
-
----
-
-## 1. Contexto Arquitectónico
-
-Los módulos front-end de RP10 (como `documents-rp10`) están diseñados para ser totalmente modulares y desarrollados en aislamiento. Para evitar la duplicación de código de infraestructura (configuraciones de compilación, linters, contenedores y el cascarón que simula el Portal de producción), se utiliza un enfoque de **Cascarón de Desarrollo Centralizado**.
-
-El repositorio de infraestructura [redpoints-front-bundle-interface-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10) actúa como el proveedor de plantillas de desarrollo y del motor de compilación.
+This document details in an exhaustive manner the behavior of the isolated development and bundling environment used by RedPoints RP10 modules, based on the interaction between [redpoints-front-documents-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-documents-rp10) and [redpoints-front-bundle-interface-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10).
 
 ---
 
-## 2. Flujo de Inicialización: `install-devApp`
+## 1. Architectural Context
 
-Cuando el desarrollador ejecuta `yarn install-devApp` (generalmente invocado automáticamente como parte de la fase de preparación al instalar dependencias en [package.json](file:///Users/jorge/projects/frontend-repos/redpoints-front-documents-rp10/package.json#L119)), se ejecuta el binario TypeScript [install-devApp.ts](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10/src/bin/install-devApp.ts).
+RP10 front-end modules (such as `documents-rp10`) are designed to be fully modular and developed in isolation. To avoid infrastructure code duplication (compilation setups, linters, containers, and the shell that simulates the production Portal), a **Centralized Development Shell** approach is used.
 
-### Procesos clave de `install-devApp`:
+The infrastructure repository [redpoints-front-bundle-interface-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10) acts as the provider of development templates and the compilation engine.
 
-1. **Validación de Firma**: El script verifica que existan ficheros de configuración específicos de la aplicación (`src/devAppConfig/constants`, `routes`, `reducers`, `menuConfig`) en el repositorio destino.
-2. **Sincronización de Ficheros**: Elimina copias obsoletas y copia las plantillas maestras desde `node_modules/redpoints-front-bundle-interface-rp10/devAppRoot/` a la raíz del repositorio de trabajo. Esto incluye `index.html`, `vite.config.ts`, `.eslintrc`, `.prettierrc`, configuraciones de jest, archivos docker, etc.
-3. **Sustitución de Tokens (Inyección de Nombre)**: Busca el marcador de plantilla `{bundle-name-to-inject}` y lo reemplaza con el nombre real del módulo (en este caso, `redpoints-front-documents-rp10`).
-   - **Vite Aliases**: Esto crea un mapeo de alias en `vite.helpers.js`:
+---
+
+## 2. Initialization Flow: `install-devApp`
+
+When the developer runs `yarn install-devApp` (usually invoked automatically as part of the preparation phase when installing dependencies in [package.json](file:///Users/jorge/projects/frontend-repos/redpoints-front-documents-rp10/package.json#L119)), the TypeScript binary [install-devApp.ts](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10/src/bin/install-devApp.ts) is executed.
+
+### Key processes of `install-devApp`:
+
+1. **Signature Validation**: The script verifies that application-specific configuration files exist (`src/devAppConfig/constants`, `routes`, `reducers`, `menuConfig`) in the target repository.
+2. **File Synchronization**: Removes obsolete copies and copies the master templates from `node_modules/redpoints-front-bundle-interface-rp10/devAppRoot/` to the root of the working repository. This includes `index.html`, `vite.config.ts`, `.eslintrc`, `.prettierrc`, jest configurations, docker files, etc.
+3. **Token Substitution (Name Injection)**: Searches for the template placeholder `{bundle-name-to-inject}` and replaces it with the actual module name (in this case, `redpoints-front-documents-rp10`).
+   - **Vite Aliases**: This creates an alias mapping in `vite.helpers.js`:
      ```javascript
      {
        find: /^redpoints-front-documents-rp10/,
        replacement: path.resolve(__dirname, 'src/modules/'),
      }
      ```
-     Gracias a esto, el código fuente puede importar sus propios submódulos simulando importaciones npm del paquete real.
-4. **Protección de Git (.gitignore)**: Inserta dinámicamente las rutas físicas de todos los ficheros copiados en el archivo `.gitignore` local, rodeados por las etiquetas `#<<<InjectedFromBundleInterfaceRp10>>>`. Esto previene subir archivos temporales del entorno al histórico de Git.
+     Thanks to this, the source code can import its own submodules simulating npm imports of the real package.
+4. **Git Protection (.gitignore)**: Dynamically inserts the physical paths of all copied files into the local `.gitignore` file, surrounded by the `#<<<InjectedFromBundleInterfaceRp10>>>` tags. This prevents uploading environment temporary files to the Git history.
 
 ---
 
-## 3. Guía de Ejecución: Secuencia de Scripts
+## 3. Execution Guide: Scripts Sequence
 
-Para trabajar en el repositorio, la secuencia de scripts recomendada se organiza de la siguiente manera:
+To work in the repository, the recommended script sequence is organized as follows:
 
 ```mermaid
 graph TD
-    A[yarn install:dependencies] -->|Instala npm y ejecuta install-devApp| B[yarn conf]
-    B -->|Descarga config de APIs de Portal| C[yarn start]
-    C -->|Inicia Servidor de Desarrollo local| D[Desarrollo / Testing]
-    D -->|Compila bundles finales| E[yarn dist]
+    A[yarn install:dependencies] -->|Installs npm and runs install-devApp| B[yarn conf]
+    B -->|Downloads Portal APIs config| C[yarn start]
+    C -->|Starts local Development Server| D[Development / Testing]
+    D -->|Compiles final bundles| E[yarn dist]
 ```
 
-### A. Preparación del Entorno
+### A. Environment Preparation
 
-- **`yarn install:dependencies`** Instala paquetes locales y ejecuta `install-devApp` de forma secuencial.
-- **`yarn conf`** (o **`yarn conf:pre`**) Se encarga de descargar y sincronizar el JSON con la configuración de las URLs de servicios externos y guardarlo en `public/config/config.json`. Sin este archivo, el Portal local no sabrá cómo comunicarse con las APIs del backend de desarrollo o pre-producción.
+- **`yarn install:dependencies`**: Installs local packages and runs `install-devApp` sequentially.
+- **`yarn conf`** (or **`yarn conf:pre`**): Responsible for downloading and syncing the JSON configuration containing external service URLs and saving it to `public/config/config.json`. Without this file, the local Portal will not know how to communicate with development or pre-production backend APIs.
 
-### B. Ciclo de Desarrollo
+### B. Development Cycle
 
-- **`yarn start`** (o **`yarn start:pre`**) Inicia el servidor local de desarrollo de Vite levantando el dominio correspondiente (ej: `https://portal.ipr.dev.redpoints.com:8000`).
-- **`yarn test`** Ejecuta la suite de pruebas unitarias configuradas en la raíz a través del compilador y el adaptador jest copiado.
+- **`yarn start`** (or **`yarn start:pre`**): Starts the local Vite development server, spinning up the corresponding domain (e.g., `https://portal.ipr.dev.redpoints.com:8000`).
+- **`yarn test`**: Runs the suite of unit tests configured at the root via the compiler and the copied jest adapter.
 
-### C. Compilación para Producción (Distribución)
+### C. Compiling for Production (Distribution)
 
-- **`yarn dist`** Limpia la carpeta `./dist` y ejecuta la lógica de empaquetado descrita en [vite-build-bundle.js](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10/src/devAppRoot/vite-build-bundle.js):
-  - **Compilación por lote**: Vite construye cada bundle configurado en `vite-build-bundle.config.json` de manera secuencial.
-  - **Acceso a Dependencias Externas**: Se excluyen los paquetes de dependencias de terceros y dependencias con prefijo `redpoints-` mediante Rollup para evitar bundles duplicados.
-  - **Inyección de Prefijos de Redux Action Types**: A través del hook de post-compilación, analiza y reescribe los strings de acción para agregar el prefijo (ej. `DOCUMENTS_REPOSITORY@CLEAR`), evitando conflictos de scopes en el store global.
-  - **Construcción y Empaquetado**: Se copia el `package.json` a `./dist` y se ejecuta `yarn pack` dentro de `./dist` para aplanar el paquete resultante.
+- **`yarn dist`**: Cleans the `./dist` folder and executes the packaging logic described in [vite-build-bundle.js](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10/src/devAppRoot/vite-build-bundle.js):
+  - **Batch Compilation**: Vite builds each bundle configured in `vite-build-bundle.config.json` sequentially.
+  - **Access to External Dependencies**: Third-party dependency packages and dependencies prefixed with `redpoints-` are excluded via Rollup to avoid duplicate bundles.
+  - **Redux Action Types Prefix Injection**: Through the post-compilation hook, it analyzes and rewrites action strings to add the prefix (e.g. `DOCUMENTS_REPOSITORY@CLEAR`), avoiding scope conflicts in the global store.
+  - **Building and Packaging**: The `package.json` is copied to `./dist` and `yarn pack` is executed inside `./dist` to flatten the resulting package.
 
 ---
 
-## 4. Automatización con Agente Inteligente (`agy`)
+## 4. Automation with Intelligent Agent (`agy`)
 
-Para que el agente de Antigravity (`agy`) determine automáticamente y valide toda esta secuencia en cualquier repositorio RP10 sin tener conocimiento previo, se define la siguiente instrucción detallada:
+To allow the Antigravity agent (`agy`) to automatically determine and validate this entire sequence in any RP10 repository without prior knowledge, the following detailed instruction is defined:
 
-### Prompt Propuesto para `agy`:
+### Proposed Prompt for `agy`:
 
-> "Analiza el archivo [package.json](file:///Users/jorge/projects/frontend-repos/redpoints-front-documents-rp10/package.json) del repositorio objetivo y las herramientas proveídas por [redpoints-front-bundle-interface-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10).
+> "Analyze the [package.json](file:///Users/jorge/projects/frontend-repos/redpoints-front-documents-rp10/package.json) file of the target repository and the tools provided by [redpoints-front-bundle-interface-rp10](file:///Users/jorge/projects/frontend-repos/redpoints-front-bundle-interface-rp10).
 >
-> Calcula y detalla la secuencia exacta de comandos de terminal (scripts) que deben ejecutarse en orden para:
+> Calculate and detail the exact sequence of terminal commands (scripts) that must be run in order to:
 >
-> 1. Configurar y descargar las dependencias remotas del proyecto.
-> 2. Inicializar el entorno de desarrollo local aislado usando `install-devApp` (explicando qué archivos copia y qué alias configura).
-> 3. Descargar el archivo de configuración del entorno de pruebas (`conf`).
-> 4. Iniciar el servidor local de Vite.
-> 5. Construir y empaquetar el bundle final para producción (`dist`), explicando el proceso de inyección automática de prefijos en las acciones de Redux para prevenir colisiones en el Portal global.
+> 1. Configure and download the project's remote dependencies.
+> 2. Initialize the isolated local development environment using `install-devApp` (explaining which files it copies and what aliases it configures).
+> 3. Download the configuration file for the test environment (`conf`).
+> 4. Start the local Vite server.
+> 5. Build and package the final bundle for production (`dist`), explaining the process of automatic action prefix injection in Redux to prevent collisions in the global Portal.
 >
-> Para cada comando listado, especifica qué subproceso o binario ejecuta, si altera algún archivo controlado por Git y cómo limpia los artefactos temporales."
+> For each listed command, specify what subprocess or binary it executes, whether it alters any file controlled by Git, and how it cleans up temporary artifacts."

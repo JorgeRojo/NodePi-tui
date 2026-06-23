@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Define un modelo concreto si deseas probarlo (ej: gemini-2.5-flash)
+# Define a specific model if you want to test it (e.g., gemini-2.5-flash)
 MODEL="gemini-3.5-flash"
 
 ARGS=(--print-timeout 45s --dangerously-skip-permissions)
@@ -8,19 +8,19 @@ if [ -n "$MODEL" ]; then
 fi
 
 agy "${ARGS[@]}" --print "$(cat << 'EOF'
-Eres un asistente de desarrollo experto y especialista en flujos de inyección y sincronización de dependencias locales (usando NodePi).
-Tu objetivo es deducir el comando exacto de terminal (script) que un desarrollador debe ejecutar en el proyecto destino para preparar/instalar el entorno local antes de continuar con la inyección.
+You are an expert development assistant and a specialist in local dependency injection and synchronization flows (using NodePi).
+Your goal is to deduce the exact terminal command (script) that a developer must execute in the target project to prepare/install the local environment before continuing with the injection.
 
-Sigue estrictamente estas directrices para la secuencia de comandos:
-1. Recomienda únicamente los comandos iniciales necesarios para instalar dependencias y realizar la configuración preliminar del entorno.
-2. Los comandos recomendados en la secuencia deben ser exactamente los definidos en el package.json, sin añadir prefijos de variables de entorno ni modificar su sintaxis.
-3. Excluye por completo comandos destinados a compilar el proyecto o a arrancar servidores de desarrollo.
-4. Identifica y agrega en "warnings" advertencias clave sobre variables de entorno requeridas, red/VPN, hosts locales, certificados o cualquier pre-requisito crítico para configurar el entorno.
+Strictly follow these guidelines for the command sequence:
+1. Recommend only the initial commands required to install dependencies and perform preliminary environment setup.
+2. The recommended commands in the sequence must be exactly those defined in the package.json, without adding environment variable prefixes or modifying their syntax.
+3. Completely exclude commands aimed at compiling the project or starting development servers.
+4. Identify and add in "warnings" key alerts about required environment variables, network/VPN, local hosts, certificates, or any critical pre-requisites to configure the environment.
 
 ---
-DATOS DEL PROYECTO DESTINO:
-Nombre: redpoints-front-rp10
-Archivos en la raíz: .amazonq, .cicd, .codegraph, .dockerignore, .eslintrc, .git, .gitignore, .kiro, .prettierrc, Dockerfile, README.md, __mocks__, docker-compose.yml, index.html, jest.config.cjs, nginx.conf, package.json, public, setupTests.js, src, vite.config.js, yarn.lock
+TARGET PROJECT DATA:
+Name: redpoints-front-rp10
+Files in root: .amazonq, .cicd, .codegraph, .dockerignore, .eslintrc, .git, .gitignore, .kiro, .prettierrc, Dockerfile, README.md, __mocks__, docker-compose.yml, index.html, jest.config.cjs, nginx.conf, package.json, public, setupTests.js, src, vite.config.js, yarn.lock
 
 <package_json>
 {
@@ -157,23 +157,23 @@ Archivos en la raíz: .amazonq, .cicd, .codegraph, .dockerignore, .eslintrc, .gi
 </package_json>
 ---
 
-Responde ÚNICAMENTE con un bloque de código JSON encerrado en triples comillas invertidas (```json ... ```) con la siguiente estructura:
+Respond ONLY with a JSON code block enclosed in triple backticks (```json ... ```) with the following structure:
 
 ```json
 {
   "projectType": "standard-vite" | "bundle-interface-module" | "other",
   "sequence": [
     {
-      "command": "comando_de_consola",
-      "description": "explicación de qué hace este comando en 1 línea"
+      "command": "terminal_command",
+      "description": "explanation of what this command does in 1 line"
     }
   ],
   "warnings": [
-    "advertencia_relevante_1"
+    "relevant_warning_1"
   ]
 }
 ```
 
-No agregues texto explicativo ni antes ni después del bloque de código JSON.
+Do not add any explanatory text before or after the JSON code block.
 EOF
 )"

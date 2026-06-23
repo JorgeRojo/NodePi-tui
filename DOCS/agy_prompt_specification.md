@@ -1,72 +1,72 @@
-# Especificación de Prompts para Inferencia de Compilación (Agy)
+# Prompt Specification for Compilation Inference (Agy)
 
-Este documento define la especificación técnica y el diseño de los prompts que NodePi envía al servicio de IA (`agy`) para analizar la estructura de compilación de las dependencias locales. El objetivo es maximizar la precisión, evitar alucinaciones y garantizar respuestas estructuradas en formato JSON válido.
-
----
-
-## 🏗️ Estructura del Prompt Optimizado
-
-El prompt se divide en tres secciones claras utilizando delimitadores semánticos (XML-style tags):
-
-1. **System Instructions (Instrucciones del Sistema)**: Establece el rol de experto, las reglas de resolución y las prioridades de inferencia.
-2. **Context Data (Datos de Contexto)**: Proporciona la información estructurada del proyecto a analizar (`package.json`, `tsconfig*.json`, configuraciones de bundlers).
-3. **Response Schema (Esquema de Respuesta)**: Fuerza una salida JSON estricta sin texto introductorio ni explicaciones adicionales.
+This document defines the technical specification and design of the prompts that NodePi sends to the AI service (`agy`) to analyze the compilation structure of local dependencies. The goal is to maximize accuracy, prevent hallucinations, and guarantee structured responses in valid JSON format.
 
 ---
 
-## 1. Instrucciones de Inferencia (System Prompt)
+## 🏗️ Optimized Prompt Structure
 
-El prompt instruye a la IA a comportarse como un analizador experto de sistemas de construcción de Node.js y seguir estas directrices de inferencia paso a paso:
+The prompt is split into three clear sections using semantic delimiters (XML-style tags):
 
-### Reglas de Inferencia de Scripts
+1. **System Instructions**: Establishes the expert role, resolution rules, and inference priorities.
+2. **Context Data**: Provides structured target project details (`package.json`, `tsconfig*.json`, bundler configurations).
+3. **Response Schema**: Forces a strict JSON output without introductory text or additional explanations.
 
-1. **`buildScript` (Script de Construcción)**:
-   - Debe buscar en `"scripts"` de `package.json` por nombres como: `build`, `compile`, `dist`, `prod`, `build:prod`.
-   - Prioriza comandos que transpilen o empaqueten código. Si el script ejecuta tests, linters o servidores dev, **no** debe seleccionarse.
-   - Si no se detecta ningún script de construcción viable, retorna `null`.
-2. **`watchScript` (Script de Observación)**:
-   - Debe buscar scripts que compilen con la bandera `--watch`, `-w` o que se llamen `watch`, `dev:watch`, `build:watch`, `compile:watch`.
-   - **Exclusión Crítica**: Evita scripts de servidor en vivo como `dev`, `start` o `serve` si su función principal es levantar un servidor HTTP/dev-server local (ej. `vite` o `next dev`), a menos que también se encarguen únicamente de recompilar código de librería.
-   - Si no existe un script de watch específico para la librería, retorna `null`.
-3. **`outDir` (Directorio de Salida)**:
-   - **Fuente 1 (TSConfig)**: Revisa `tsconfig*.json` (priorizando `.build.json` sobre `.json`). Extrae `compilerOptions.outDir`.
-   - **Fuente 2 (Bundler Config)**: Revisa configuraciones de bundlers:
+---
+
+## 1. Inference Instructions (System Prompt)
+
+The prompt instructs the AI to behave as an expert Node.js build system analyzer and follow these step-by-step inference guidelines:
+
+### Script Inference Rules
+
+1. **`buildScript` (Build Script)**:
+   - Must search `"scripts"` in `package.json` for names like: `build`, `compile`, `dist`, `prod`, `build:prod`.
+   - Prioritizes commands that transpile or package code. If the script runs tests, linters, or dev servers, it must **not** be selected.
+   - If no viable build script is detected, returns `null`.
+2. **`watchScript` (Watch Script)**:
+   - Must search for scripts that compile with the `--watch` or `-w` flag, or are named `watch`, `dev:watch`, `build:watch`, `compile:watch`.
+   - **Critical Exclusion**: Avoid live server scripts like `dev`, `start`, or `serve` if their main function is to spin up a local HTTP/dev server (e.g., `vite` or `next dev`), unless they also exclusively recompile library code.
+   - If no library-specific watch script exists, returns `null`.
+3. **`outDir` (Output Directory)**:
+   - **Source 1 (TSConfig)**: Checks `tsconfig*.json` (prioritizing `.build.json` over `.json`). Extracts `compilerOptions.outDir`.
+   - **Source 2 (Bundler Config)**: Checks bundler configurations:
      - Vite: `build.outDir` (default: `dist`).
-     - Webpack: `output.path` o `output.dir` (default: `dist` o `build`).
-     - Rollup: `output.file` o `output.dir` (ej: si `output.file` es `dist/index.js`, el outDir es `dist`).
-   - **Fuente 3 (Entrypoints)**: Revisa campos `main`, `module` o `exports` de `package.json`. Si apuntan a `dist/index.js` o `lib/index.js`, el outDir es `dist` o `lib`.
-   - Si el proyecto no tiene compilación (ej. JS vanilla), retorna `.` o `""`.
+     - Webpack: `output.path` or `output.dir` (default: `dist` or `build`).
+     - Rollup: `output.file` or `output.dir` (e.g., if `output.file` is `dist/index.js`, the outDir is `dist`).
+   - **Source 3 (Entrypoints)**: Checks `main`, `module`, or `exports` fields in `package.json`. If they point to `dist/index.js` or `lib/index.js`, the outDir is `dist` or `lib`.
+   - If the project has no compilation (e.g., vanilla JS), returns `.` or `""`.
 
 ---
 
-## 2. Plantilla del Prompt en Código (Template)
+## 2. In-Code Prompt Template
 
-El prompt generado dinámicamente por NodePi se estructura de la siguiente manera:
+The dynamically generated prompt by NodePi is structured as follows:
 
-> **Nota de implementación**: La sintaxis `{{variable}}` y `{{#if}}` / `{{#each}}` es pseudocódigo ilustrativo. En la implementación real se usarán template literals de ES6 (`${variable}`) y bucles nativos de JavaScript para construir el string del prompt.
+> **Implementation Note**: The `{{variable}}` and `{{#if}}` / `{{#each}}` syntax is illustrative pseudocode. The real implementation uses ES6 template literals (`${variable}`) and native JavaScript loops to construct the prompt string.
 
-````markdown
-Eres un analizador de configuraciones de empaquetado y compilación de JavaScript/TypeScript. Tu objetivo es deducir los comandos óptimos de construcción (`buildScript`), observación en vivo (`watchScript`) y el directorio final de salida (`outDir`) para una dependencia local basándote exclusivamente en sus archivos de configuración.
+```markdown
+You are an expert package configuration and build analyzer for JavaScript/TypeScript. Your goal is to deduce the optimal build command (`buildScript`), watch/live compile command (`watchScript`), and final output directory (`outDir`) for a local dependency based exclusively on its configuration files.
 
-Sigue este razonamiento interno de forma estricta:
+Strictly follow this internal reasoning:
 
-1. Revisa los scripts del package.json para detectar tareas de compilación (evita servidores web).
-2. Determina el "outDir" cruzando los archivos tsconfig, configuraciones de webpack/vite y los campos "main"/"module" del package.json.
-3. Si el script de compilación usa TypeScript pero no hay un script "watch" explícito, devuelve null en "watchScript" (NodePi se encargará del fallback nativo con tsc).
+1. Scan the package.json scripts to detect compilation/build tasks (avoid web dev servers).
+2. Determine the "outDir" by cross-referencing tsconfig files, webpack/vite configs, and the package.json "main"/"module" fields.
+3. If the build script uses TypeScript but there is no explicit watch script, return null for "watchScript" (NodePi will handle native fallback with tsc).
 
 ---
 
-DATOS DEL PAQUETE: Nombre: {{packageName}}
+PACKAGE DATA: Name: {{packageName}}
 
 <package_json> {{packageJsonContent}} </package_json>
 
-{{#if tsconfigs}} <typescript_configurations> {{#each tsconfigs}} Archivo: {{this.fileName}} Contenido: {{this.content}}
+{{#if tsconfigs}} <typescript_configurations> {{#each tsconfigs}} File: {{this.fileName}} Content: {{this.content}}
 
 ---
 
 {{/each}} </typescript_configurations> {{/if}}
 
-{{#if bundlerConfigs}} <bundler_configurations> {{#each bundlerConfigs}} Archivo: {{this.fileName}} Contenido: {{this.content}}
+{{#if bundlerConfigs}} <bundler_configurations> {{#each bundlerConfigs}} File: {{this.fileName}} Content: {{this.content}}
 
 ---
 
@@ -74,68 +74,68 @@ DATOS DEL PAQUETE: Nombre: {{packageName}}
 
 ---
 
-Responde ÚNICAMENTE con un bloque de código JSON encerrado en triples comillas invertidas (`json ... `) con la siguiente estructura:
+Respond ONLY with a JSON code block enclosed in triple backticks (`json ... `) with the following structure:
 
 ```json
 {
-  "buildScript": "nombre_del_script_o_null",
-  "watchScript": "nombre_del_script_o_null",
-  "outDir": "ruta_relativa_al_directorio_de_salida"
+  "buildScript": "script_name_or_null",
+  "watchScript": "script_name_or_null",
+  "outDir": "relative_path_to_output_directory"
 }
 ```
-````
+```
 
-No agregues texto explicativo ni antes ni después del bloque de código JSON.
-
-````
-
-## 2.1 Comando de Invocación de Agy
-
-NodePi invoca `agy` como subproceso no interactivo usando `execa`:
-
-```bash
-agy --print "<prompt_generado>" --print-timeout 5s --dangerously-skip-permissions
-````
-
-- `--print`: Modo no interactivo. Ejecuta el prompt y devuelve la respuesta por stdout.
-- `--print-timeout 5s`: Timeout de 5 segundos. Si la IA no responde a tiempo, NodePi activa el fallback manual.
-- `--dangerously-skip-permissions`: Evita prompts interactivos de permisos que bloquearían el subproceso.
-
-NodePi parsea la salida de stdout buscando un bloque de código JSON (` ```json ... ``` `) mediante una expresión regular.
+Do not add any explanatory text before or after the JSON block.
 
 ---
 
-## 3. Manejo de Fallbacks y Errores de la IA
+## 2.1 Agy Invocation Command
 
-Para asegurar que NodePi nunca falle por un prompt mal procesado o un fallo de red, se implementa una tubería de control de calidad de la respuesta:
+NodePi invokes `agy` as a non-interactive subprocess using `execa`:
+
+```bash
+agy --print "<generated_prompt>" --print-timeout 45s --dangerously-skip-permissions
+```
+
+- `--print`: Non-interactive mode. Runs the prompt and returns the response via stdout.
+- `--print-timeout 45s`: 45-second timeout. If the AI doesn't respond in time, NodePi triggers the manual fallback.
+- `--dangerously-skip-permissions`: Prevents interactive permission prompts that would block the subprocess.
+
+NodePi parses the stdout output looking for a JSON code block (` ```json ... ``` `) using a regular expression.
+
+---
+
+## 3. Fallbacks and AI Error Handling
+
+To ensure NodePi never fails due to a badly processed prompt or network error, a response quality control pipeline is implemented:
 
 ```mermaid
 graph TD
-    Agy[Llamada a agy CLI] --> Success{¿Respuesta Exitosa?}
-    Success -- Sí --> ParseJSON{¿Es JSON válido?}
-    Success -- No --> Fallback[Lanzar Fallback Manual]
+    Agy[Call agy CLI] --> Success{Successful Response?}
+    Success -- Yes --> ParseJSON{Is Valid JSON?}
+    Success -- No --> Fallback[Trigger Manual Fallback]
 
-    ParseJSON -- Sí --> HallucinationGuard{¿El script existe en package.json?}
+    ParseJSON -- Yes --> HallucinationGuard{Does script exist in package.json?}
     ParseJSON -- No --> Fallback
 
-    HallucinationGuard -- Sí --> Cache[Guardar en Cache]
+    HallucinationGuard -- Yes --> Cache[Save in Cache]
     HallucinationGuard -- No --> Fallback
 
-    Fallback --> PromptUser[Preguntar al usuario interactivamente]
+    Fallback --> PromptUser[Prompt User Interactively]
     PromptUser --> Cache
 ```
 
-### Reglas del Guardián de Alucinaciones (Hallucination Guard)
+### Hallucination Guard Rules
 
-NodePi validará la respuesta de la IA contra el `package.json` original de la dependencia:
+NodePi validates the AI response against the dependency's original `package.json`:
 
-1. Si `buildScript` no es `null`, debe coincidir exactamente con una de las llaves del objeto `"scripts"` en el `package.json`. Si no coincide, se invalida y se asume `null`.
-2. Si `watchScript` no es `null`, debe coincidir exactamente con una de las llaves del objeto `"scripts"`. Si no coincide, se invalida y se asume `null`.
-3. Si `outDir` no es una ruta física válida dentro del proyecto (o no está referenciada en tsconfigs/package.json), se le asigna `"dist"` como valor predeterminado si existe la carpeta físicamente, o se le pregunta al usuario.
+1. If `buildScript` is not `null`, it must exactly match one of the keys of the `"scripts"` object in the `package.json`. If it doesn't match, it is invalidated and assumed to be `null`.
+2. If `watchScript` is not `null`, it must exactly match one of the keys of the `"scripts"` object. If it doesn't match, it is invalidated and assumed to be `null`.
+3. If `outDir` is not a valid physical path within the project (or referenced in tsconfigs/package.json), it is defaulted to `"dist"` if the folder exists physically, or the user is prompted.
 
-### Dependencias sin Compilación (JavaScript Puro)
+### Dependencies Without Compilation (Pure JavaScript)
 
-Si la IA (o el usuario en modo fallback) determina que una dependencia no requiere compilación (no tiene script de build ni de watch viable, y no tiene TypeScript), NodePi debe:
+If the AI (or the user in fallback mode) determines that a dependency does not require compilation (has no build or watch script, and does not use TypeScript), NodePi will:
 
-1. Devolver `buildScript: null`, `watchScript: null`, y `outDir: "."` (raíz del proyecto).
-2. En modo Sync, NodePi sincronizará directamente los archivos fuente del paquete sin lanzar ningún compilador en segundo plano.
+1. Return `buildScript: null`, `watchScript: null`, and `outDir: "."` (project root).
+2. In Sync mode, NodePi will sync the package source files directly without running any background compiler.
