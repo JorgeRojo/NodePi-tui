@@ -31,6 +31,7 @@ import {
 } from './core/execution.js';
 import { setupExitHandlers } from './core/exit-handler.js';
 import { getGitStatus, getVersionMismatch } from './core/git-guard.js';
+import { logger } from './core/logger.js';
 import { dependencyOrchestrator } from './core/orchestrator.js';
 import { runPreflight } from './core/preflight.js';
 import { validateProject } from './core/project-validator.js';
@@ -102,6 +103,8 @@ function colorizeBanner(str: string): string {
 export async function runWizard(): Promise<void> {
   console.clear();
   console.log(colorizeBanner(banner));
+  logger.init();
+  logger.info('Wizard', 'NodePi CLI wizard started.');
 
   let preflight;
   try {
@@ -569,10 +572,12 @@ export async function runWizard(): Promise<void> {
   });
 
   if (mode === 'inject') {
+    logger.info('Wizard', 'NodePi injection completed successfully.');
     outro('NodePi injection completed successfully.');
   } else {
+    logger.info('Wizard', 'Live synchronization active.');
     outro(
-      'Live synchronization active. Press Ctrl+C to terminate and restore the target project.'
+      `Live synchronization active. Press Ctrl+C to terminate and restore the target project.\nBackground logs are written to: ${logger.getLogFilePath()}`
     );
     // Hang process indefinitely to keep chokidar watching alive
     if (process.env.NODE_ENV !== 'test') {

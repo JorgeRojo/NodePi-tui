@@ -100,8 +100,10 @@ vi.mock('@clack/prompts', () => ({
 
 describe('CLI Wizard Orchestrator (runWizard)', () => {
   let exitSpy: any;
+  let consoleLogSpy: any;
 
   beforeEach(() => {
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     exitSpy = vi
       .spyOn(process, 'exit')
       .mockImplementation(() => undefined as never);
@@ -190,6 +192,7 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
   });
 
   afterEach(() => {
+    consoleLogSpy.mockRestore();
     exitSpy.mockRestore();
     vi.clearAllMocks();
   });

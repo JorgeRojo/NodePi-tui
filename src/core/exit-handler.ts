@@ -1,4 +1,6 @@
+
 import { backupRestoreManager } from './backup-restore.js';
+import { logger } from './logger.js';
 import { dependencyOrchestrator } from './orchestrator.js';
 
 let handlersRegistered = false;
@@ -22,6 +24,9 @@ export function setupExitHandlers(): void {
 
       // 2. Restore backed-up node_modules and configurations
       backupRestoreManager.restore();
+
+      // 3. Close the logger
+      logger.close();
 
       process.exit(0);
     } catch (error) {

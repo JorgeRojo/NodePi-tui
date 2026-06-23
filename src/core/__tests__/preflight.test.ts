@@ -36,8 +36,10 @@ describe('Preflight Checks', () => {
   let tempDir: string;
   let cwdSpy: any;
   let exitSpy: any;
+  let consoleLogSpy: any;
 
   beforeEach(() => {
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     tempDir = path.join(
       os.tmpdir(),
       'nodepi-test-preflight-' + Math.random().toString(36).slice(2)
@@ -54,6 +56,7 @@ describe('Preflight Checks', () => {
   });
 
   afterEach(() => {
+    consoleLogSpy.mockRestore();
     cwdSpy.mockRestore();
     exitSpy.mockRestore();
     vi.clearAllMocks();

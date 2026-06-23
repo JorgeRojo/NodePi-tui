@@ -63,7 +63,7 @@ Both modes operate by **physically overwriting** the dependency folder inside th
    - Dependency watch compilers for all synced packages.
    - Rsync watchers for all synced packages.
    - _Note: The target project's development server is NEVER launched by NodePi. The user must launch their dev server manually in a separate terminal._
-9. **Bulletproof Teardown**: NodePi captures all exit signals (`SIGINT`, `SIGTERM`, `uncaughtException`, `exit`). Upon exit, it restores the original dependency folders from `.nodepi/backups/` using **synchronous** IO (`fs.cpSync`, `fs.rmSync`), restores the Vite config if applicable, and deletes `.nodepi/`.
+9. **Bulletproof Teardown**: NodePi captures all exit signals (`SIGINT`, `SIGTERM`, `uncaughtException`, `exit`). Upon exit, it restores the original dependency folders from `.nodepi/backups/` using **synchronous** IO (`fs.cpSync`, `fs.rmSync`), restores the Vite config if applicable, closes the background logger, and deletes the temporary `.nodepi/` directory (including the logs folder) to leave the workspace pristine.
 
 ### 1.4 AI-Driven Script Inference (Agy) & Advanced Caching
 
@@ -80,6 +80,23 @@ NodePi eliminates manual heuristics for script resolution. Once the user selects
 **Advanced Caching Layer**: To prevent unnecessary AI calls, NodePi caches the results (both AI and manual selections) in `~/.nodepi/scripts_cache.json`. The cache is keyed by a SHA-256 hash generated from the combination of the `package.json` (scripts, main, module, exports) and the full contents of all discovered configuration files in the dependency root (including `tsconfig*.json`, not just `tsconfig.json`). This guarantees that any change in any build config will safely invalidate the cache.
 
 _Hallucination Guard_: NodePi programmatically verifies that the suggested/cached script physically exists in the package's `"scripts"` block before executing it to prevent crashes.
+
+### 1.5 Background Logging System
+
+To record background terminal tasks, NodePi implements a dedicated logging system that writes log entries to a local daily log file located inside the application's temporary directory: `.nodepi/logs/background-YYYY-MM-DD.log`.
+
+- **Milestones Logged**:
+  - Wizard startup, milestones, errors, and mode selections.
+  - Initial workspace backups and their subsequent restorations.
+  - Spawning of background compiler processes.
+  - File watching events and debounced synchronization queue requests.
+  - Vite HMR wrapper generation and restoration details.
+- **Piping Outputs**: Both `stdout` and `stderr` streams of compiler subprocesses (e.g., `tsc -w`) are piped into the active daily log file under the `[Compiler:package-name]` category, facilitating debugging of compilation errors.
+- **Log Rotation & Retention**:
+  - Logs are rotated daily.
+  - NodePi keeps exactly the 3 most recent daily log files (deleting older ones during startup initialization).
+  - While code backup folders (`backups/`) and metadata (`backup-meta.json`) are completely deleted on clean shutdown, the `.nodepi/logs/` directory is preserved across runs to allow historical debugging.
+  - The log stream is safely closed upon process termination.
 
 ## 2. Technical Specifications
 

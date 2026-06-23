@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { logger } from './logger.js';
+
 export interface BackupDependency {
   name: string;
   originalPath: string; // e.g., "node_modules/lib-core"
@@ -34,8 +36,8 @@ export class BackupRestoreManager {
     try {
       const content = fs.readFileSync(this.metaPath, 'utf-8');
       return JSON.parse(content);
-    } catch (error) {
-      console.error('Error reading backup metadata:', error);
+    } catch (error: any) {
+      logger.error('BackupRestore', `Error reading backup metadata: ${error.message}`);
       return null;
     }
   }
@@ -46,12 +48,15 @@ export class BackupRestoreManager {
   private saveMetadata(meta: BackupMetadata): void {
     fs.mkdirSync(this.nodepiDir, { recursive: true });
     fs.writeFileSync(this.metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+    logger.debug('BackupRestore', `Backup metadata successfully saved to "${this.metaPath}"`);
   }
 
   /**
    * Backs up the target project environment for specified dependencies.
    */
   public backup(dependencies: string[], viteConfigPath: string | null): void {
+    logger.info('BackupRestore', `Starting environment backup for dependencies: [${dependencies.join(', ')}]`);
+
     // 1. Create backup directories
     fs.mkdirSync(this.backupDir, { recursive: true });
 
@@ -68,6 +73,7 @@ export class BackupRestoreManager {
       fs.copyFileSync(viteConfigPath, dest);
       meta.viteConfigPath = viteConfigPath;
       meta.viteConfigBackedUp = true;
+      logger.info('BackupRestore', `Vite configuration backed up to "${dest}"`);
     }
 
     // 3. Backup dependency folders inside node_modules
@@ -91,14 +97,19 @@ export class BackupRestoreManager {
         // Move the directory synchronously
         try {
           fs.renameSync(depPath, depBackupPath);
+          logger.info('BackupRestore', `Moved dependency folder from "${depPath}" to "${depBackupPath}"`);
         } catch (err: any) {
           if (err.code === 'EXDEV') {
             fs.cpSync(depPath, depBackupPath, { recursive: true });
             fs.rmSync(depPath, { recursive: true, force: true });
+            logger.info('BackupRestore', `Cross-device copied and removed dependency folder from "${depPath}" to "${depBackupPath}"`);
           } else {
+            logger.error('BackupRestore', `Failed to move dependency "${depName}": ${err.message}`);
             throw err;
           }
         }
+      } else {
+        logger.warn('BackupRestore', `Dependency folder not found at "${depPath}". Proceeding without moving.`);
       }
 
       meta.dependencies.push({
@@ -117,8 +128,12 @@ export class BackupRestoreManager {
    * Restores the target project back to its original state using the metadata.
    */
   public restore(): void {
+    logger.info('BackupRestore', 'Starting restoration of target project workspace...');
     const meta = this.loadMetadata();
-    if (!meta) return;
+    if (!meta) {
+      logger.warn('BackupRestore', 'No backup metadata found. Restoration aborted.');
+      return;
+    }
 
     // 1. Restore Vite configuration
     if (meta.viteConfigBackedUp && meta.viteConfigPath) {
@@ -126,6 +141,7 @@ export class BackupRestoreManager {
       const src = path.join(this.backupDir, `${filename}.backup`);
       if (fs.existsSync(src)) {
         fs.copyFileSync(src, meta.viteConfigPath);
+        logger.info('BackupRestore', `Restored original Vite configuration to "${meta.viteConfigPath}"`);
       }
 
       // Clean up backup file renamed by the CLI wrapper
@@ -137,8 +153,9 @@ export class BackupRestoreManager {
       if (fs.existsSync(backupConfigPath)) {
         try {
           fs.unlinkSync(backupConfigPath);
-        } catch {
-          // Ignore
+          logger.debug('BackupRestore', `Removed temporary backup Vite config at "${backupConfigPath}"`);
+        } catch (error: any) {
+          logger.warn('BackupRestore', `Failed to remove temporary backup Vite config "${backupConfigPath}": ${error.message}`);
         }
       }
     }
@@ -151,6 +168,7 @@ export class BackupRestoreManager {
       // Remove whatever is currently in node_modules/dep (symlinks or folders created by pnpm)
       if (fs.existsSync(depPath)) {
         fs.rmSync(depPath, { recursive: true, force: true });
+        logger.debug('BackupRestore', `Removed active development dependency copy at "${depPath}"`);
       }
 
       if (dep.originalExists && fs.existsSync(depBackupPath)) {
@@ -163,22 +181,31 @@ export class BackupRestoreManager {
         // Move backup back to original location
         try {
           fs.renameSync(depBackupPath, depPath);
+          logger.info('BackupRestore', `Restored dependency "${dep.name}" directory back to "${depPath}"`);
         } catch (err: any) {
           if (err.code === 'EXDEV') {
             fs.cpSync(depBackupPath, depPath, { recursive: true });
             fs.rmSync(depBackupPath, { recursive: true, force: true });
+            logger.info('BackupRestore', `Cross-device restored dependency "${dep.name}" directory back to "${depPath}"`);
           } else {
+            logger.error('BackupRestore', `Failed to restore dependency "${dep.name}": ${err.message}`);
             throw err;
           }
         }
       }
     }
 
-    // 3. Clean up .nodepi folder entirely
+    // 3. Clean up backup files and metadata (keeping logs)
     try {
-      fs.rmSync(this.nodepiDir, { recursive: true, force: true });
-    } catch (error) {
-      console.error('Error cleaning up .nodepi folder:', error);
+      if (fs.existsSync(this.backupDir)) {
+        fs.rmSync(this.backupDir, { recursive: true, force: true });
+      }
+      if (fs.existsSync(this.metaPath)) {
+        fs.unlinkSync(this.metaPath);
+      }
+      logger.info('BackupRestore', 'Environment restoration completed successfully. Backup folders deleted.');
+    } catch (error: any) {
+      logger.error('BackupRestore', `Error cleaning up backups: ${error.message}`);
     }
   }
 }

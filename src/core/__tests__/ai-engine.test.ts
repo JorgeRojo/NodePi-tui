@@ -33,8 +33,10 @@ vi.mock('../script-cache.js', () => ({
 describe('AI Inference Engine & Heuristics', () => {
   let tempDir: string;
   let exitSpy: any;
+  let consoleLogSpy: any;
 
   beforeEach(async () => {
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     exitSpy = vi
       .spyOn(process, 'exit')
       .mockImplementation(() => undefined as never);
@@ -47,6 +49,7 @@ describe('AI Inference Engine & Heuristics', () => {
   });
 
   afterEach(async () => {
+    consoleLogSpy.mockRestore();
     exitSpy.mockRestore();
     vi.clearAllMocks();
     try {

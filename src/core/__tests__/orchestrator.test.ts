@@ -51,7 +51,7 @@ describe('DependencyOrchestrator', () => {
     expect(execa).toHaveBeenCalledWith('tsc -w', {
       cwd: '/src/path',
       shell: true,
-      stdio: 'ignore',
+      stdio: 'pipe',
       cleanup: true,
       detached: true,
     });

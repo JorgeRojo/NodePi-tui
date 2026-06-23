@@ -2,6 +2,8 @@ import { execa } from 'execa';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { logger } from './logger.js';
+
 /**
  * Runs rsync from source to destination, excluding node_modules, .git, and .nodepi.
  */
@@ -12,7 +14,9 @@ export async function runRsync(
   const srcPath = source.endsWith('/') ? source : `${source}/`;
   const destPath = destination.endsWith('/') ? destination : `${destination}/`;
 
-  await execa('rsync', [
+  logger.debug('Rsync', `Executing: rsync -ax --delete --exclude node_modules --exclude .git --exclude .nodepi ${srcPath} ${destPath}`);
+
+  const result = await execa('rsync', [
     '-ax',
     '--delete',
     '--exclude',
@@ -24,6 +28,13 @@ export async function runRsync(
     srcPath,
     destPath,
   ]);
+
+  if (result && result.stdout && result.stdout.trim()) {
+    logger.debug('Rsync:stdout', result.stdout.trim());
+  }
+  if (result && result.stderr && result.stderr.trim()) {
+    logger.error('Rsync:stderr', result.stderr.trim());
+  }
 }
 
 /**
@@ -35,10 +46,13 @@ export async function patchEntrypoint(
   outDir: string
 ): Promise<boolean> {
   const pkgJsonPath = path.join(destPkgDir, 'package.json');
+  logger.info('EntrypointPatcher', `Patch checking for dependency copy at "${destPkgDir}"`);
+
   let content: string;
   try {
     content = await fs.readFile(pkgJsonPath, 'utf-8');
   } catch {
+    logger.warn('EntrypointPatcher', `No package.json found at "${pkgJsonPath}". Cannot patch.`);
     return false; // No package.json to patch
   }
 
@@ -65,13 +79,16 @@ export async function patchEntrypoint(
       // Patch package.json main field
       pkg.main = candidatePath;
       await fs.writeFile(pkgJsonPath, JSON.stringify(pkg, null, 2), 'utf-8');
+      logger.info('EntrypointPatcher', `Successfully patched "main" in ${pkgJsonPath} to point to "${candidatePath}"`);
       return true;
     } catch {
+      logger.debug('EntrypointPatcher', `No index.js found at "${path.join(destPkgDir, candidatePath)}". Patching skipped.`);
       // index.js in outDir does not exist either, cannot patch
       return false;
     }
   }
 
+  logger.debug('EntrypointPatcher', `Valid entrypoint "${mainField}" already exists for "${destPkgDir}". No patching needed.`);
   return false;
 }
 
@@ -88,6 +105,7 @@ export async function writeViteWrapper(
   const backupName = filename.replace(/\.(ts|js|mjs|cjs)$/, '.backup.$1');
   const backupPath = path.join(targetDir, backupName);
 
+  logger.info('ViteWrapper', `Backing up original Vite config from "${viteConfigPath}" to "${backupPath}"`);
   // Backup original config
   await fs.rename(viteConfigPath, backupPath);
 
@@ -127,6 +145,7 @@ export default async (env) => {
 };
 `;
 
+  logger.info('ViteWrapper', `Writing temporary Vite HMR wrapper config to "${viteConfigPath}" excluding: [${excludeArrayStr}]`);
   await fs.writeFile(viteConfigPath, wrapperContent, 'utf-8');
 }
 
@@ -142,11 +161,14 @@ export async function restoreViteWrapper(
 
   try {
     await fs.access(backupPath);
+    logger.info('ViteWrapper', `Restoring original Vite config from backup "${backupPath}" to "${viteConfigPath}"`);
     // Delete wrapper config
     await fs.unlink(viteConfigPath);
     // Restore original config
     await fs.rename(backupPath, viteConfigPath);
+    logger.info('ViteWrapper', `Vite config successfully restored. Temporary wrapper deleted.`);
   } catch {
+    logger.debug('ViteWrapper', `No backup Vite config found at "${backupPath}". Restoration skipped.`);
     // Backup does not exist, nothing to restore
   }
 }
