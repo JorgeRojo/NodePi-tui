@@ -33,6 +33,7 @@ import { setupExitHandlers } from './core/exit-handler.js';
 import { getGitStatus, getVersionMismatch } from './core/git-guard.js';
 import { dependencyOrchestrator } from './core/orchestrator.js';
 import { runPreflight } from './core/preflight.js';
+import { validateProject } from './core/project-validator.js';
 function resolveDependencyPath(targetDir: string, depName: string): string {
   const directPath = path.join(targetDir, 'node_modules', depName);
   try {
@@ -58,13 +59,15 @@ function resolveDependencyPath(targetDir: string, depName: string): string {
 }
 
 const banner = `
-░█▀█░█▀█░█▀▄░█▀▀░█▀█░▀█▀
-░█░█░█░█░█░█░█▀▀░█▀▀░░█░
-░▀░▀░▀▀▀░▀▀░░▀▀▀░▀░░░▀▀▀
+    ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·       
+  ·░░░░░░░░░░░░░░░░█▀█░█▀█░█▀▄░█▀▀░█▀█░▀█▀░░░░░░░░░░░░░░░░·  
+··░░░░░░░░░░░░░░░░░█░█░█░█░█░█░█▀▀░█▀▀░░█░░░░░░░░░░░░░░░░░░··
+  ·░░░░░░░░░░░░░░░░▀░▀░▀▀▀░▀▀ ░▀▀▀░▀░░░▀▀▀░░░░░░░░░░░░░░░░·  
+    ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·    
 `;
 
 function colorizeBanner(str: string): string {
-  const solidColors = [63, 105, 141]; // Vertical gradient: Slate Blue/Bluish Lilac (63) -> Light Bluish Lilac (105) -> Bright Lilac (141)
+  const solidColors = [38, 63, 105, 141, 38]; // Vertical gradient: Slate Blue/Bluish Lilac (63) -> Light Bluish Lilac (105) -> Bright Lilac (141)
   let textLineCounter = 0;
 
   return str
@@ -79,6 +82,9 @@ function colorizeBanner(str: string): string {
       return line
         .split('')
         .map(char => {
+          if (char === '·') {
+            return `\x1b[38;5;97m${char}\x1b[0m`; // Medium-dark purple for non-solid blocks
+          }
           if (char === '░') {
             return `\x1b[38;5;97m${char}\x1b[0m`; // Medium-dark purple for non-solid blocks
           }
@@ -105,6 +111,41 @@ export async function runWizard(): Promise<void> {
     process.exit(1);
     return;
   }
+
+  // Project validation & script sequence calculation step
+  const validationSpinner = spinner();
+  validationSpinner.start('Analizando estructura del proyecto...');
+  const validationResult = await validateProject(process.cwd(), preflight.hasAgy);
+
+  if (!validationResult.isValid) {
+    validationSpinner.stop(pc.red('Fallo en el análisis del proyecto.'));
+    log.error(pc.red(`Error: ${validationResult.error}`));
+    process.exit(1);
+    return;
+  }
+
+  validationSpinner.stop(pc.green('¡Proyecto analizado con éxito!'));
+
+  // Log warnings
+  if (validationResult.warnings.length > 0) {
+    for (const warning of validationResult.warnings) {
+      log.warn(pc.yellow(`⚠️  ${warning}`));
+    }
+  }
+
+  // Display computed script sequence
+  log.message(
+    pc.cyan(
+      `Secuencia de comandos recomendada para este proyecto (${pc.bold(
+        validationResult.projectType
+      )}):`
+    )
+  );
+  validationResult.scriptSequence.forEach((step, idx) => {
+    console.log(
+      `  ${pc.bold(pc.magenta(`${idx + 1}. ${step.command}`))} \n  ${pc.dim(step.description)}\n`
+    );
+  });
 
   // 1. Load Configurations
   let globalConfig = await configManager.loadGlobal();

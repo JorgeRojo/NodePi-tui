@@ -16,10 +16,15 @@ import { setupExitHandlers } from '../core/exit-handler.js';
 import { getGitStatus, getVersionMismatch } from '../core/git-guard.js';
 import { dependencyOrchestrator } from '../core/orchestrator.js';
 import { runPreflight } from '../core/preflight.js';
+import { validateProject } from '../core/project-validator.js';
 import { runWizard } from '../wizard.js';
 
 vi.mock('../core/preflight.js', () => ({
   runPreflight: vi.fn(),
+}));
+
+vi.mock('../core/project-validator.js', () => ({
+  validateProject: vi.fn(),
 }));
 
 vi.mock('../core/config.js', () => ({
@@ -106,6 +111,18 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
       isViteProject: false,
       viteConfigPath: null,
       hasAgy: true,
+    });
+
+    // Default Project Validation passes
+    vi.mocked(validateProject).mockResolvedValue({
+      isValid: true,
+      packageManager: 'npm',
+      projectType: 'standard-vite',
+      scriptSequence: [
+        { command: 'npm install', description: 'Instala las dependencias del proyecto.' },
+        { command: 'npm run dev', description: 'Inicia el servidor de desarrollo de Vite.' },
+      ],
+      warnings: [],
     });
 
     // Default Configs
@@ -272,5 +289,23 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
     // Should NOT call backup or execution steps
     expect(backupRestoreManager.backup).not.toHaveBeenCalled();
     expect(runRsync).not.toHaveBeenCalled();
+  });
+
+  test('should abort with error if project validation fails', async () => {
+    vi.mocked(validateProject).mockResolvedValue({
+      isValid: false,
+      packageManager: 'npm',
+      projectType: 'other',
+      scriptSequence: [],
+      warnings: [],
+      error: 'Invalid package.json',
+    });
+
+    await runWizard();
+
+    // Should abort and call process.exit(1)
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    // Should NOT call config loading
+    expect(configManager.loadGlobal).not.toHaveBeenCalled();
   });
 });
