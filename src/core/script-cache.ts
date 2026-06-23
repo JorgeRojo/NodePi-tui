@@ -21,13 +21,13 @@ export class ScriptCache {
   private memoryCache: CacheStore | null = null;
 
   constructor() {
-    // Sugiero guardar esto en un directorio global para compartir el cálculo entre varios proyectos
+    // Suggest saving this in a global directory to share the cache across multiple projects
     const globalDir = path.join(os.homedir(), '.nodepi');
     this.cacheFilePath = path.join(globalDir, 'scripts_cache.json');
   }
 
   /**
-   * Genera un hash SHA-256 a partir de los campos relevantes que definen si el build cambia.
+   * Generates a SHA-256 hash from the relevant fields that define if the build changes.
    */
   private async generateHash(
     packagePath: string,
@@ -45,7 +45,7 @@ export class ScriptCache {
 
     try {
       const files = await fs.readdir(packagePath);
-      // Ficheros de configuración que influyen en el proceso de compilación
+      // Configuration files that influence the compilation process
       const configFiles = files
         .filter(
           f =>
@@ -57,7 +57,7 @@ export class ScriptCache {
             f.startsWith('babel.config') ||
             f.startsWith('vue.config')
         )
-        .sort(); // Ordenados para garantizar el mismo hash
+        .sort(); // Sorted to guarantee the same hash
 
       for (const file of configFiles) {
         const filePath = path.join(packagePath, file);
@@ -65,18 +65,18 @@ export class ScriptCache {
           const content = await fs.readFile(filePath, 'utf-8');
           hasher.update(`|${file}|${content}`);
         } catch {
-          // Ignorar silenciosamente si no se puede leer un fichero
+          // Silently ignore if a file cannot be read
         }
       }
     } catch {
-      // Ignorar si el directorio no se puede leer por alguna razón
+      // Ignore if the directory cannot be read for some reason
     }
 
     return hasher.digest('hex');
   }
 
   /**
-   * Asegura que el directorio de caché exista y carga el fichero a memoria.
+   * Ensures the cache directory exists and loads the file into memory.
    */
   private async loadCache(): Promise<CacheStore> {
     if (this.memoryCache) return this.memoryCache;
@@ -85,7 +85,7 @@ export class ScriptCache {
       const data = await fs.readFile(this.cacheFilePath, 'utf-8');
       this.memoryCache = JSON.parse(data);
     } catch (error: any) {
-      // Si no existe el fichero o hay error de parseo, inicializamos vacío
+      // If the file does not exist or there is a parsing error, initialize as empty
       if (error.code === 'ENOENT' || error instanceof SyntaxError) {
         this.memoryCache = {};
       } else {
@@ -97,7 +97,7 @@ export class ScriptCache {
   }
 
   /**
-   * Guarda el estado actual de la caché en el disco.
+   * Saves the current state of the cache to disk.
    */
   private async saveCache(): Promise<void> {
     if (!this.memoryCache) return;
@@ -111,8 +111,8 @@ export class ScriptCache {
   }
 
   /**
-   * Intenta recuperar el resultado cacheado para un paquete.
-   * Si el hash actual no coincide, devuelve null (invalida la caché).
+   * Tries to retrieve the cached result for a package.
+   * If the current hash does not match, returns null (invalidates the cache).
    */
   public async get(
     packagePath: string,
@@ -129,12 +129,12 @@ export class ScriptCache {
       return entry.result;
     }
 
-    // El hash ha cambiado, por lo tanto la caché está obsoleta
+    // The hash has changed, therefore the cache is obsolete
     return null;
   }
 
   /**
-   * Guarda un nuevo resultado en la caché.
+   * Saves a new result to the cache.
    */
   public async set(
     packagePath: string,
@@ -153,5 +153,5 @@ export class ScriptCache {
   }
 }
 
-// Exportamos un singleton por comodidad
+// Export a singleton for convenience
 export const scriptCache = new ScriptCache();

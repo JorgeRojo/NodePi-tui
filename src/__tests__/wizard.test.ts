@@ -119,7 +119,10 @@ describe('CLI Wizard Orchestrator (runWizard)', () => {
       packageManager: 'npm',
       projectType: 'standard-vite',
       scriptSequence: [
-        { command: 'npm install', description: 'Instala las dependencias del proyecto.' },
+        {
+          command: 'npm install',
+          description: 'Installs the project dependencies.',
+        },
       ],
       warnings: [],
     });

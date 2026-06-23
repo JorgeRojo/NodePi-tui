@@ -73,7 +73,7 @@ describe('AI Inference Engine & Heuristics', () => {
         bundlerConfigs
       );
 
-      expect(prompt).toContain('Nombre: my-lib');
+      expect(prompt).toContain('Name: my-lib');
       expect(prompt).toContain('<package_json>');
       expect(prompt).toContain('"build": "tsc"');
       expect(prompt).toContain('<typescript_configurations>');
@@ -254,7 +254,9 @@ Hope this helps!`;
 
     test('should exit process with code 1 if agy fails and hasAgy is true', async () => {
       // Mock agy throwing error
-      vi.mocked(execa).mockRejectedValue(new Error('Command timed out after 45000 milliseconds'));
+      vi.mocked(execa).mockRejectedValue(
+        new Error('Command timed out after 45000 milliseconds')
+      );
 
       const pkgJson = {
         name: 'my-lib',
@@ -282,7 +284,12 @@ Hope this helps!`;
         outDir: 'dist-fallback',
       });
 
-      const result = await resolveBuildAndWatch(tempDir, pkgJson, false, fallbackMock);
+      const result = await resolveBuildAndWatch(
+        tempDir,
+        pkgJson,
+        false,
+        fallbackMock
+      );
 
       expect(execa).not.toHaveBeenCalled();
       expect(fallbackMock).toHaveBeenCalled();

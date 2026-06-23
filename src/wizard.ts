@@ -59,11 +59,11 @@ function resolveDependencyPath(targetDir: string, depName: string): string {
 }
 
 const banner = `
-    ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·       
-  ·░░░░░░░░░░░░░░░░█▀█░█▀█░█▀▄░█▀▀░█▀█░▀█▀░░░░░░░░░░░░░░░░·  
-··░░░░░░░░░░░░░░░░░█░█░█░█░█░█░█▀▀░█▀▀░░█░░░░░░░░░░░░░░░░░░··
-  ·░░░░░░░░░░░░░░░░▀░▀░▀▀▀░▀▀ ░▀▀▀░▀░░░▀▀▀░░░░░░░░░░░░░░░░·  
-    ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·    
+    ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·       
+  ·░░░░░░░░░░█▀█░█▀█░█▀▄░█▀▀░█▀█░▀█▀░░░░░░░░░░·  
+··░░░░░░░░░░░█░█░█░█░█░█░█▀▀░█▀▀░░█░░░░░░░░░░░░··
+  ·░░░░░░░░░░▀░▀░▀▀▀░▀▀ ░▀▀▀░▀░░░▀▀▀░░░░░░░░░░·  
+    ·░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░·    
 `;
 
 function colorizeBanner(str: string): string {
@@ -107,18 +107,21 @@ export async function runWizard(): Promise<void> {
   try {
     preflight = await runPreflight();
   } catch (error: any) {
-    log.error(`Error fatal en Preflight: ${error.message}`);
+    log.error(`Fatal preflight error: ${error.message}`);
     process.exit(1);
     return;
   }
 
   // Project validation & script sequence calculation step
   const validationSpinner = spinner();
-  validationSpinner.start('Analizando estructura del proyecto...');
-  const validationResult = await validateProject(process.cwd(), preflight.hasAgy);
+  validationSpinner.start('Analyzing project structure...');
+  const validationResult = await validateProject(
+    process.cwd(),
+    preflight.hasAgy
+  );
 
   if (!validationResult.isValid) {
-    validationSpinner.stop(pc.red('Fallo en el análisis del proyecto.'));
+    validationSpinner.stop(pc.red('Failed to analyze project.'));
     const home = os.homedir();
     const formattedError = (validationResult.error || '').replace(home, '~');
     log.error(pc.red(`Error: ${formattedError}`));
@@ -126,7 +129,7 @@ export async function runWizard(): Promise<void> {
     return;
   }
 
-  validationSpinner.stop(pc.green('¡Proyecto analizado con éxito!'));
+  validationSpinner.stop(pc.green('Project analyzed successfully!'));
 
   // Log warnings
   if (validationResult.warnings.length > 0) {
@@ -138,7 +141,7 @@ export async function runWizard(): Promise<void> {
   // Display computed script sequence
   log.message(
     pc.cyan(
-      `Secuencia de comandos recomendada para este proyecto (${pc.bold(
+      `Recommended commands for this project (${pc.bold(
         validationResult.projectType
       )}):`
     )
@@ -151,20 +154,21 @@ export async function runWizard(): Promise<void> {
 
   if (validationResult.scriptSequence.length > 0) {
     const shouldExecute = await confirm({
-      message: '¿Deseas ejecutar la secuencia de comandos recomendada en el proyecto destino?',
+      message:
+        'Do you want to run the recommended command sequence in the target project?',
       initialValue: true,
     });
 
     if (typeof shouldExecute === 'symbol') {
-      log.error('Operación cancelada.');
+      log.error('Operation cancelled.');
       process.exit(1);
       return;
     }
 
     if (shouldExecute) {
-      log.info('Ejecutando secuencia de comandos recomendada...');
+      log.info('Running recommended command sequence...');
       for (const step of validationResult.scriptSequence) {
-        log.step(`Ejecutando: ${step.command} (${step.description})`);
+        log.step(`Running: ${step.command} (${step.description})`);
         try {
           await execa(step.command, {
             cwd: process.cwd(),
@@ -172,52 +176,51 @@ export async function runWizard(): Promise<void> {
             shell: true,
           });
         } catch (err: any) {
-          log.error(`Fallo al ejecutar el comando "${step.command}": ${err.message}`);
+          log.error(`Failed to run command "${step.command}": ${err.message}`);
           const shouldContinue = await confirm({
-            message: '¿Deseas continuar con el resto de los comandos de la secuencia?',
+            message:
+              'Do you want to continue with the remaining commands in the sequence?',
             initialValue: false,
           });
           if (typeof shouldContinue === 'symbol' || !shouldContinue) {
-            log.error('Operación cancelada.');
+            log.error('Operation cancelled.');
             process.exit(1);
             return;
           }
         }
       }
-      log.success('Secuencia de comandos recomendada ejecutada con éxito.');
+      log.success('Recommended command sequence executed successfully.');
     }
   }
 
   // 1. Load Configurations
   let globalConfig = await configManager.loadGlobal();
   if (globalConfig.containers.length === 0) {
-    log.warn('No se han configurado directorios de búsqueda globales.');
+    log.warn('No global search directories configured.');
     const shouldConfigure = await confirm({
-      message:
-        '¿Deseas configurar tus directorios globales de proyectos ahora?',
+      message: 'Do you want to configure your global project directories now?',
       initialValue: true,
     });
 
     if (typeof shouldConfigure === 'symbol' || !shouldConfigure) {
       log.error(
-        'Operación cancelada. Se requiere un directorio de búsqueda global para continuar.'
+        'Operation cancelled. A global search directory is required to continue.'
       );
       process.exit(1);
       return;
     }
 
     const pathsInput = await text({
-      message:
-        'Ingresa las rutas de búsqueda de tus proyectos (separadas por comas):',
+      message: 'Enter search paths for your projects (comma-separated):',
       placeholder: '~/projects, /var/www',
       validate: value => {
-        if (!value.trim()) return 'La ruta no puede estar vacía.';
+        if (!value.trim()) return 'Path cannot be empty.';
         return;
       },
     });
 
     if (typeof pathsInput === 'symbol') {
-      log.error('Operación cancelada.');
+      log.error('Operation cancelled.');
       process.exit(1);
       return;
     }
@@ -242,15 +245,15 @@ export async function runWizard(): Promise<void> {
         if (stat.isDirectory()) {
           validContainers.push(rawDir);
         } else {
-          log.error(`La ruta '${rawDir}' no es un directorio válido.`);
+          log.error(`Path '${rawDir}' is not a valid directory.`);
         }
       } catch {
-        log.error(`La ruta '${rawDir}' no existe o no es accesible.`);
+        log.error(`Path '${rawDir}' does not exist or is not accessible.`);
       }
     }
 
     if (validContainers.length === 0) {
-      log.error('No se ingresaron directorios de búsqueda válidos. Abortando.');
+      log.error('No valid search directories entered. Aborting.');
       process.exit(1);
       return;
     }
@@ -258,40 +261,38 @@ export async function runWizard(): Promise<void> {
     globalConfig = { containers: validContainers };
     await configManager.saveGlobal(globalConfig);
     log.success(
-      `Configuración global guardada con éxito en ~/.nodepirc.json con: ${validContainers.join(', ')}`
+      `Global configuration successfully saved in ~/.nodepirc.json with: ${validContainers.join(', ')}`
     );
   }
 
-  const localConfig = await configManager.load();
-
   // 2. Scan Local Containers and Target Dependency Tree
   const s = spinner();
-  s.start('Escaneando directorios locales y dependencias del proyecto...');
+  s.start('Scanning local directories and project dependencies...');
 
   const localPackages = await scanContainers(globalConfig.containers);
   const graph = await buildDependencyGraph(process.cwd());
 
-  s.stop('Escaneo completado.');
+  s.stop('Scan completed.');
 
   const targetDeps = graph.get('target') || [];
   const linkableDeps = targetDeps.filter(dep => localPackages.has(dep));
 
   if (linkableDeps.length === 0) {
     log.warn(
-      'No se encontraron dependencias en node_modules que coincidan con tus paquetes locales.'
+      'No dependencies found in node_modules that match your local packages.'
     );
     process.exit(0);
     return;
   }
 
   // 3. User selects packages to inject or sync
+  const localConfig = await configManager.load();
   const initialSelections = localConfig.dependencies
     .map(d => d.name)
     .filter(name => linkableDeps.includes(name));
 
   const selectedDeps = await multiselect({
-    message:
-      'Selecciona las dependencias locales que deseas inyectar o sincronizar:',
+    message: 'Select local dependencies you want to inject or synchronize:',
     options: linkableDeps.map(dep => ({
       value: dep,
       label: dep,
@@ -302,7 +303,7 @@ export async function runWizard(): Promise<void> {
   });
 
   if (typeof selectedDeps === 'symbol') {
-    log.error('Operación cancelada.');
+    log.error('Operation cancelled.');
     process.exit(1);
     return;
   }
@@ -317,60 +318,60 @@ export async function runWizard(): Promise<void> {
     if (gitStatus.isGit) {
       if (gitStatus.hasUpstream && gitStatus.isBehind) {
         log.warn(
-          `La dependencia local ${dep} está por detrás de su upstream por ${gitStatus.behindCount} commits.`
+          `Local dependency ${dep} is behind its upstream by ${gitStatus.behindCount} commits.`
         );
         const shouldPull = await confirm({
-          message: `¿Deseas que NodePi ejecute 'git pull' automáticamente en ${dep}?`,
+          message: `Do you want NodePi to run 'git pull' automatically in ${dep}?`,
           initialValue: true,
         });
 
         if (typeof shouldPull === 'symbol') {
-          log.error('Operación cancelada.');
+          log.error('Operation cancelled.');
           process.exit(1);
           return;
         }
 
         if (shouldPull) {
           const sPull = spinner();
-          sPull.start(`Ejecutando 'git pull' en ${dep}...`);
+          sPull.start(`Running 'git pull' in ${dep}...`);
           try {
             await execa('git', ['pull'], { cwd: localPath });
-            sPull.stop(pc.green(`'git pull' ejecutado con éxito en ${dep}.`));
+            sPull.stop(pc.green(`'git pull' executed successfully in ${dep}.`));
 
             // Re-evaluate git status
             gitStatus = await getGitStatus(localPath);
             if (gitStatus.hasUpstream && gitStatus.isBehind) {
               log.error(
-                `La dependencia local ${dep} sigue desactualizada después del pull. Abortando.`
+                `Local dependency ${dep} is still out of date after pulling. Aborting.`
               );
               process.exit(1);
               return;
             }
           } catch (err: any) {
-            sPull.stop(pc.red(`Error al ejecutar 'git pull': ${err.message}`));
+            sPull.stop(pc.red(`Error executing 'git pull': ${err.message}`));
             process.exit(1);
             return;
           }
         } else {
           log.error(
-            `Operación cancelada. Por favor, actualiza ${dep} antes de continuar.`
+            `Operation cancelled. Please update ${dep} before continuing.`
           );
           process.exit(1);
           return;
         }
       }
-      log.info(`[Git] ${dep}: Rama '${gitStatus.branch}' confirmada y al día.`);
-    } else {
-      log.warn(
-        `[Git] ${dep}: No se encuentra en un repositorio Git. Omitiendo comprobaciones.`
+      log.info(
+        `[Git] ${dep}: Branch '${gitStatus.branch}' verified and up-to-date.`
       );
+    } else {
+      log.warn(`[Git] ${dep}: Not inside a Git repository. Skipping checks.`);
     }
 
     // Version Guard
     const versionMismatch = await getVersionMismatch(localPath, targetDepPath);
     if (versionMismatch.hasMismatch) {
       log.warn(
-        `[Versión] ${dep}: Desajuste detectado. Local ${versionMismatch.localVersion} vs Target ${versionMismatch.targetVersion} (${versionMismatch.type})`
+        `[Version] ${dep}: Mismatch detected. Local ${versionMismatch.localVersion} vs Target ${versionMismatch.targetVersion} (${versionMismatch.type})`
       );
     }
   }
@@ -387,7 +388,7 @@ export async function runWizard(): Promise<void> {
     for (const inter of intermediates) {
       if (!allDepsToProcess.includes(inter)) {
         log.info(
-          `Autodetectado eslabón intermedio local: ${inter} (se incluirá en el proceso)`
+          `Autodetected local intermediate link: ${inter} (will be included in the process)`
         );
         allDepsToProcess.push(inter);
       }
@@ -396,19 +397,19 @@ export async function runWizard(): Promise<void> {
 
   // 6. Select execution mode
   const mode = await select({
-    message: 'Selecciona el modo de operación para las dependencias:',
+    message: 'Select execution mode for the dependencies:',
     options: [
-      { value: 'inject', label: 'Injection Mode (Copia estática única)' },
+      { value: 'inject', label: 'Injection Mode (One-time static copy)' },
       {
         value: 'sync',
-        label: 'Synchronization Mode (Observación en vivo + HMR)',
+        label: 'Synchronization Mode (Live watching + HMR)',
       },
     ],
     initialValue: localConfig.mode || 'inject',
   });
 
   if (typeof mode === 'symbol') {
-    log.error('Operación cancelada.');
+    log.error('Operation cancelled.');
     process.exit(1);
     return;
   }
@@ -425,11 +426,11 @@ export async function runWizard(): Promise<void> {
     );
 
     const promptFallback = async (): Promise<ScriptAnalysisResult> => {
-      log.warn(`No se pudo resolver la compilación de ${dep} mediante IA.`);
+      log.warn(`Could not resolve build process for ${dep} using AI.`);
       const buildScr = await select({
-        message: `Selecciona el script de compilación para ${dep}:`,
+        message: `Select build script for ${dep}:`,
         options: [
-          { value: 'null', label: 'Ninguno (JavaScript Puro)' },
+          { value: 'null', label: 'None (Pure JavaScript)' },
           ...Object.keys(pkgJson.scripts || {}).map(s => ({
             value: s,
             label: s,
@@ -438,7 +439,7 @@ export async function runWizard(): Promise<void> {
       });
 
       if (typeof buildScr === 'symbol') {
-        log.error('Operación cancelada.');
+        log.error('Operation cancelled.');
         process.exit(1);
         return { buildScript: null, watchScript: null, outDir: '.' };
       }
@@ -446,9 +447,9 @@ export async function runWizard(): Promise<void> {
       let watchScr: string | symbol | null = null;
       if (buildScr !== 'null') {
         watchScr = await select({
-          message: `Selecciona el script de observación (watch) para ${dep}:`,
+          message: `Select watch script for ${dep}:`,
           options: [
-            { value: 'null', label: 'Ninguno' },
+            { value: 'null', label: 'None' },
             ...Object.keys(pkgJson.scripts || {}).map(s => ({
               value: s,
               label: s,
@@ -456,20 +457,20 @@ export async function runWizard(): Promise<void> {
           ],
         });
         if (typeof watchScr === 'symbol') {
-          log.error('Operación cancelada.');
+          log.error('Operation cancelled.');
           process.exit(1);
           return { buildScript: null, watchScript: null, outDir: '.' };
         }
       }
 
       const outDirInput = await text({
-        message: `Especifica el directorio de salida (outDir) para ${dep}:`,
+        message: `Specify output directory (outDir) for ${dep}:`,
         placeholder: 'dist',
         initialValue: 'dist',
       });
 
       if (typeof outDirInput === 'symbol') {
-        log.error('Operación cancelada.');
+        log.error('Operation cancelled.');
         process.exit(1);
         return { buildScript: null, watchScript: null, outDir: '.' };
       }
@@ -492,9 +493,9 @@ export async function runWizard(): Promise<void> {
   }
 
   // 8. Perform backup
-  s.start('Creando copias de seguridad de las dependencias...');
+  s.start('Creating dependency backups...');
   backupRestoreManager.backup(allDepsToProcess, preflight.viteConfigPath);
-  s.stop('Copias de seguridad creadas.');
+  s.stop('Backups created.');
 
   // 9. Setup Exit Handlers if running in live watch sync mode
   if (mode === 'sync') {
@@ -518,7 +519,7 @@ export async function runWizard(): Promise<void> {
 
     // Run build script if present
     if (res.buildScript) {
-      s.start(`Compilando dependencia ${dep} (npm run ${res.buildScript})...`);
+      s.start(`Compiling dependency ${dep} (npm run ${res.buildScript})...`);
       const cmdParts = res.buildScript.split(' ');
       if (
         cmdParts[0] === 'npm' ||
@@ -529,16 +530,16 @@ export async function runWizard(): Promise<void> {
       } else {
         await execa('npm', ['run', res.buildScript], { cwd: localPath });
       }
-      s.stop(`Compilación de ${dep} finalizada.`);
+      s.stop(`Compilation of ${dep} finished.`);
     }
 
     // Sync compiled folder to node_modules via rsync
     const destRelativePath = path.relative(process.cwd(), targetDepPath);
-    s.start(`Inyectando archivos locales en ${destRelativePath}...`);
+    s.start(`Injecting local files into ${destRelativePath}...`);
     const sourceSyncPath = path.join(localPath, res.outDir);
     await runRsync(sourceSyncPath, targetDepPath);
     await patchEntrypoint(targetDepPath, res.outDir);
-    s.stop(`Inyección de ${dep} completada.`);
+    s.stop(`Injection of ${dep} completed.`);
 
     // Start watching if sync mode is enabled
     if (mode === 'sync') {
@@ -568,10 +569,10 @@ export async function runWizard(): Promise<void> {
   });
 
   if (mode === 'inject') {
-    outro('NodePi finalizó la inyección de forma exitosa.');
+    outro('NodePi injection completed successfully.');
   } else {
     outro(
-      'Sincronización en vivo activa. Presiona Ctrl+C para finalizar y restaurar el proyecto destino.'
+      'Live synchronization active. Press Ctrl+C to terminate and restore the target project.'
     );
     // Hang process indefinitely to keep chokidar watching alive
     if (process.env.NODE_ENV !== 'test') {

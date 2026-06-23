@@ -32,37 +32,39 @@ export async function runPreflight(): Promise<PreflightResult> {
   if (backupRestoreManager.hasBackup()) {
     log.warn(
       pc.yellow(
-        '⚠️  NodePi ha detectado un cierre inesperado en una ejecución anterior.'
+        '⚠️  NodePi has detected an unexpected shutdown from a previous execution.'
       )
     );
 
     const shouldRestore = await confirm({
       message:
-        '¿Deseas restaurar los archivos del proyecto destino a su estado original?',
+        'Do you want to restore the target project files to their original state?',
       initialValue: true,
     });
 
     if (typeof shouldRestore === 'symbol') {
-      log.error('Operación cancelada.');
+      log.error('Operation cancelled.');
       process.exit(1);
       return undefined as any;
     }
 
     if (shouldRestore) {
       const s = spinner();
-      s.start('Restaurando copias de seguridad...');
+      s.start('Restoring backups...');
       try {
         backupRestoreManager.restore();
-        s.stop(pc.green('¡Entorno restaurado con éxito a su estado original!'));
+        s.stop(
+          pc.green('Environment successfully restored to its original state!')
+        );
       } catch (err: any) {
-        s.stop(pc.red(`Error al restaurar: ${err.message}`));
+        s.stop(pc.red(`Failed to restore: ${err.message}`));
         process.exit(1);
         return undefined as any;
       }
     } else {
       log.warn(
         pc.yellow(
-          'Restauración omitida. El proyecto podría estar en un estado inconsistente.'
+          'Restore skipped. The project might be in an inconsistent state.'
         )
       );
     }
@@ -71,14 +73,14 @@ export async function runPreflight(): Promise<PreflightResult> {
   // 2. System Tools Validation
   const targetDir = process.cwd();
   const s = spinner();
-  s.start('Validando requisitos del sistema...');
+  s.start('Validating system requirements...');
 
   const hasRsync = await commandExists('rsync');
   const hasGit = await commandExists('git');
   const hasAgy = await commandExists('agy');
 
   if (!hasRsync || !hasGit) {
-    s.stop(pc.red('Fallo en la validación de requisitos del sistema.'));
+    s.stop(pc.red('Failed to validate system requirements.'));
 
     const missing = [];
     if (!hasRsync) missing.push('rsync');
@@ -86,13 +88,11 @@ export async function runPreflight(): Promise<PreflightResult> {
 
     log.error(
       pc.red(
-        `Error: Faltan las siguientes herramientas requeridas: ${missing.join(', ')}`
+        `Error: The following required tools are missing: ${missing.join(', ')}`
       )
     );
     log.message(
-      pc.dim(
-        'Por favor, instala estas herramientas en tu sistema antes de continuar.'
-      )
+      pc.dim('Please install these tools on your system before continuing.')
     );
     process.exit(1);
     return undefined as any;
@@ -104,6 +104,7 @@ export async function runPreflight(): Promise<PreflightResult> {
     'vite.config.js',
     'vite.config.mjs',
     'vite.config.cjs',
+    'vite.config.mts',
     'vite.config.mts',
   ];
 
@@ -120,20 +121,22 @@ export async function runPreflight(): Promise<PreflightResult> {
   }
 
   // Create summary log strings
-  const rsyncStatus = pc.green('[✓] rsync detectado');
-  const gitStatus = pc.green('[✓] git detectado');
+  const rsyncStatus = pc.green('[✓] rsync detected');
+  const gitStatus = pc.green('[✓] git detected');
   const agyStatus = hasAgy
-    ? pc.green('[✓] agy detectado (inferencia IA activada)')
-    : pc.yellow('[!] agy NO detectado (se usará fallback interactivo manual)');
+    ? pc.green('[✓] agy detected (AI inference enabled)')
+    : pc.yellow(
+        '[!] agy NOT detected (manual interactive fallback will be used)'
+      );
   const viteStatus = isViteProject
     ? pc.green(
-        '[✓] Configuración de Vite detectada (integraciones Vite HMR activadas)'
+        '[✓] Vite configuration detected (Vite HMR integrations enabled)'
       )
     : pc.yellow(
-        '[!] Configuración de Vite no detectada (se omitirán wrappers de Vite)'
+        '[!] Vite configuration NOT detected (Vite wrappers will be skipped)'
       );
 
-  s.stop(pc.green('¡Requisitos del sistema validados!'));
+  s.stop(pc.green('System requirements validated!'));
 
   // Show detailed checklist
   console.log(

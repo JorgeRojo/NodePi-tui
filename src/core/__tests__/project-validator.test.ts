@@ -42,7 +42,7 @@ describe('Project Validator', () => {
 
     const result = await validateProject('/test-path', false);
     expect(result.isValid).toBe(false);
-    expect(result.error).toContain('No se encontró package.json');
+    expect(result.error).toContain('Could not find package.json');
   });
 
   test('should detect Yarn project programmatically', async () => {
@@ -71,7 +71,7 @@ describe('Project Validator', () => {
     expect(result.scriptSequence).toEqual([
       {
         command: 'yarn install',
-        description: 'Instala las dependencias del proyecto.',
+        description: 'Installs the project dependencies.',
       },
     ]);
   });
@@ -105,12 +105,12 @@ describe('Project Validator', () => {
       {
         command: 'yarn install:dependencies',
         description:
-          'Instala dependencias locales e inicializa el entorno aislado con install-devApp.',
+          'Installs local dependencies and initializes the isolated environment using install-devApp.',
       },
       {
         command: 'yarn conf',
         description:
-          'Descarga las configuraciones del entorno de pruebas (APIs de Portal).',
+          'Downloads the testing environment configurations (Portal APIs).',
       },
     ]);
   });
@@ -150,7 +150,9 @@ describe('Project Validator', () => {
       'agy',
       expect.arrayContaining([
         '--print',
-        expect.stringContaining('flujos de inyección y sincronización'),
+        expect.stringContaining(
+          'local dependency injection and synchronization'
+        ),
         '--print-timeout',
         '45s',
       ]),
@@ -201,7 +203,7 @@ describe('Project Validator', () => {
     expect(result.scriptSequence).toEqual([
       {
         command: 'npm install',
-        description: 'Instala las dependencias del proyecto.',
+        description: 'Installs the project dependencies.',
       },
     ]);
   });
@@ -225,7 +227,7 @@ describe('Project Validator', () => {
     expect(result.scriptSequence).toEqual([
       {
         command: 'npm install',
-        description: 'Instala las dependencias del proyecto.',
+        description: 'Installs the project dependencies.',
       },
     ]);
   });
@@ -237,7 +239,7 @@ describe('Project Validator', () => {
 
     const result = await validateProject('/test-path', false);
     expect(result.isValid).toBe(false);
-    expect(result.error).toContain('Error al leer o parsear package.json');
+    expect(result.error).toContain('Error reading or parsing package.json');
   });
 
   test('should detect bundle-interface-module with missing optional scripts (conf, dist)', async () => {
@@ -262,14 +264,18 @@ describe('Project Validator', () => {
     expect(result.scriptSequence).toEqual([
       {
         command: 'npm install',
-        description: 'Instala dependencias locales e inicializa el entorno aislado con install-devApp.',
+        description:
+          'Installs local dependencies and initializes the isolated environment using install-devApp.',
       },
     ]);
   });
 
   test('should generate warning for RedPoints private dependencies', async () => {
     vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
-    vi.mocked(fs.readdir).mockResolvedValue(['package.json', 'yarn.lock'] as any);
+    vi.mocked(fs.readdir).mockResolvedValue([
+      'package.json',
+      'yarn.lock',
+    ] as any);
     vi.mocked(fs.readFile).mockResolvedValue(
       JSON.stringify({
         name: 'my-project',
@@ -283,13 +289,16 @@ describe('Project Validator', () => {
     const result = await validateProject('/test-path', false);
     expect(result.isValid).toBe(true);
     expect(result.warnings).toContain(
-      'Se han detectado dependencias de RedPoints. Asegúrate de tener configurado tu acceso al registry privado (Nexus) antes de instalar dependencias.'
+      'RedPoints dependencies detected. Make sure to configure access to the private registry (Nexus) before installing dependencies.'
     );
   });
 
   test('should detect setup script in standard-vite project', async () => {
     vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
-    vi.mocked(fs.readdir).mockResolvedValue(['package.json', 'yarn.lock'] as any);
+    vi.mocked(fs.readdir).mockResolvedValue([
+      'package.json',
+      'yarn.lock',
+    ] as any);
     vi.mocked(fs.readFile).mockResolvedValue(
       JSON.stringify({
         name: 'redpoints-front-rp10',
@@ -312,14 +321,17 @@ describe('Project Validator', () => {
     expect(result.scriptSequence).toEqual([
       {
         command: 'yarn setup',
-        description: 'Inicializa y configura el proyecto para el desarrollo.',
+        description: 'Initializes and configures the project for development.',
       },
     ]);
   });
 
   test('should detect install:dependencies script in standard-vite project when setup is not present', async () => {
     vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as any);
-    vi.mocked(fs.readdir).mockResolvedValue(['package.json', 'pnpm-lock.yaml'] as any);
+    vi.mocked(fs.readdir).mockResolvedValue([
+      'package.json',
+      'pnpm-lock.yaml',
+    ] as any);
     vi.mocked(fs.readFile).mockResolvedValue(
       JSON.stringify({
         name: 'vite-project',
@@ -341,7 +353,7 @@ describe('Project Validator', () => {
     expect(result.scriptSequence).toEqual([
       {
         command: 'pnpm install:dependencies',
-        description: 'Instala las dependencias del proyecto.',
+        description: 'Installs the project dependencies.',
       },
     ]);
   });

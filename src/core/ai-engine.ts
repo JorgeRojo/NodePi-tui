@@ -2,6 +2,7 @@ import { log } from '@clack/prompts';
 import { execa } from 'execa';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import pc from 'picocolors';
 
 import { scriptCache } from './script-cache.js';
 
@@ -23,22 +24,26 @@ export async function buildAgyPrompt(
   const simplifiedPackageJson = {
     name: packageJson.name,
     scripts: packageJson.scripts || {},
-    dependencies: packageJson.dependencies ? Object.keys(packageJson.dependencies) : [],
-    devDependencies: packageJson.devDependencies ? Object.keys(packageJson.devDependencies) : [],
+    dependencies: packageJson.dependencies
+      ? Object.keys(packageJson.dependencies)
+      : [],
+    devDependencies: packageJson.devDependencies
+      ? Object.keys(packageJson.devDependencies)
+      : [],
   };
   const packageJsonContent = JSON.stringify(simplifiedPackageJson, null, 2);
 
-  let prompt = `Eres un analizador de configuraciones de empaquetado y compilación de JavaScript/TypeScript.
-Tu objetivo es deducir los comandos óptimos de construcción (\`buildScript\`), observación en vivo (\`watchScript\`) y el directorio final de salida (\`outDir\`) para una dependencia local basándote exclusivamente en sus archivos de configuración.
+  let prompt = `You are an expert package configuration and build analyzer for JavaScript/TypeScript.
+Your goal is to deduce the optimal build command (\`buildScript\`), watch/live compile command (\`watchScript\`), and final output directory (\`outDir\`) for a local dependency based exclusively on its configuration files.
 
-Sigue este razonamiento interno de forma estricta:
-1. Revisa los scripts del package.json para detectar tareas de compilación (evita servidores web).
-2. Determina el "outDir" cruzando los archivos tsconfig, configuraciones de webpack/vite y los campos "main"/"module" del package.json.
-3. Si el script de compilación usa TypeScript pero no hay un script "watch" explícito, devuelve null en "watchScript" (NodePi se encargará del fallback nativo con tsc).
+Strictly follow this internal reasoning:
+1. Scan the package.json scripts to detect compilation/build tasks (avoid web dev servers).
+2. Determine the "outDir" by cross-referencing tsconfig files, webpack/vite configs, and the package.json "main"/"module" fields.
+3. If the build script uses TypeScript but there is no explicit watch script, return null for "watchScript" (NodePi will handle native fallback with tsc).
 
 ---
-DATOS DEL PAQUETE:
-Nombre: ${packageName}
+PACKAGE DATA:
+Name: ${packageName}
 
 <package_json>
 ${packageJsonContent}
@@ -48,7 +53,7 @@ ${packageJsonContent}
   if (tsconfigs.length > 0) {
     prompt += `\n<typescript_configurations>\n`;
     for (const conf of tsconfigs) {
-      prompt += `Archivo: ${conf.fileName}\nContenido:\n${conf.content}\n---\n`;
+      prompt += `File: ${conf.fileName}\nContent:\n${conf.content}\n---\n`;
     }
     prompt += `</typescript_configurations>\n`;
   }
@@ -56,24 +61,24 @@ ${packageJsonContent}
   if (bundlerConfigs.length > 0) {
     prompt += `\n<bundler_configurations>\n`;
     for (const conf of bundlerConfigs) {
-      prompt += `Archivo: ${conf.fileName}\nContenido:\n${conf.content}\n---\n`;
+      prompt += `File: ${conf.fileName}\nContent:\n${conf.content}\n---\n`;
     }
     prompt += `</bundler_configurations>\n`;
   }
 
   prompt += `---
 
-Responde ÚNICAMENTE con un bloque de código JSON encerrado en triples comillas invertidas (\`\`\`json ... \`\`\`) con la siguiente estructura:
+Respond ONLY with a JSON code block enclosed in triple backticks (\`\`\`json ... \`\`\`) with the following structure:
 
 \`\`\`json
 {
-  "buildScript": "nombre_del_script_o_null",
-  "watchScript": "nombre_del_script_o_null",
-  "outDir": "ruta_relativa_al_directorio_de_salida"
+  "buildScript": "script_name_or_null",
+  "watchScript": "script_name_or_null",
+  "outDir": "relative_path_to_output_directory"
 }
 \`\`\`
 
-No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
+Do not add any explanatory text before or after the JSON block.`;
 
   return prompt;
 }
@@ -101,7 +106,7 @@ export function parseAgyResponse(response: string): ScriptAnalysisResult {
     };
   } catch (err: any) {
     throw new Error(
-      `Fallo al parsear respuesta JSON de la IA: ${err.message}. Respuesta original: ${response}`,
+      `Failed to parse JSON response from the AI: ${err.message}. Original response: ${response}`,
       { cause: err }
     );
   }
@@ -208,8 +213,10 @@ export async function resolveBuildAndWatch(
     try {
       // 3. Invoke agy with 45-second timeout
       const pkgName = packageJson.name || 'library';
-      console.log(`\n[NodePi] Llamada a agy para ${pkgName}:`);
-      console.log(`$ agy --model gemini-3.5-flash --print "<prompt>" --print-timeout 45s --dangerously-skip-permissions`);
+      console.log(`\n[NodePi] Invoking agy for ${pkgName}:`);
+      console.log(
+        `$ agy --model gemini-3.5-flash --print "<prompt>" --print-timeout 45s --dangerously-skip-permissions`
+      );
 
       const { stdout } = await execa(
         'agy',
@@ -222,17 +229,29 @@ export async function resolveBuildAndWatch(
           '--print',
           prompt,
         ],
-        { timeout: 45000 }
+        {
+          timeout: 45000,
+          env: process.env,
+          stdin: 'ignore',
+        }
       );
 
-      console.log(`\n[NodePi] Output de agy para ${pkgName}:`);
+      console.log(`\n[NodePi] agy output for ${pkgName}:`);
       console.log(stdout);
 
       const parsed = parseAgyResponse(stdout);
       result = validateAnalysisResult(parsed, packageJson);
     } catch (err: any) {
       const pkgName = packageJson.name || 'library';
-      log.error(`[NodePi] Fallo en la llamada a agy para ${pkgName}: ${err.message}`);
+      log.error(`[NodePi] agy call failed for ${pkgName}: ${err.message}`);
+      if (err.stderr) {
+        console.error(pc.red(`\n[agy stderr for ${pkgName}]:\n${err.stderr}`));
+      }
+      if (err.stdout) {
+        console.error(
+          pc.yellow(`\n[agy stdout for ${pkgName}]:\n${err.stdout}`)
+        );
+      }
       process.exit(1);
       return undefined as any;
     }

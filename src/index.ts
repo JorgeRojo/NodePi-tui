@@ -58,13 +58,14 @@ if (values.cwd && typeof values.cwd === 'string') {
   try {
     process.chdir(targetDir);
   } catch (err: any) {
-    console.error(`Error: No se pudo cambiar al directorio ${targetDir}: ${err.message}`);
+    console.error(
+      `Error: Could not change directory to ${targetDir}: ${err.message}`
+    );
     process.exit(1);
   }
 }
 
-runWizard().catch((err) => {
-  console.error('Error fatal no controlado:', err.message);
+runWizard().catch(err => {
+  console.error('Uncaught fatal error:', err.message);
   process.exit(1);
 });
-

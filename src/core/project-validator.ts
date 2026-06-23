@@ -2,6 +2,7 @@ import { log } from '@clack/prompts';
 import { execa } from 'execa';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import pc from 'picocolors';
 
 export interface ScriptStep {
   command: string;
@@ -52,7 +53,7 @@ export async function validateProject(
         projectType: 'other',
         scriptSequence: [],
         warnings: [],
-        error: `No se encontró package.json en el directorio: ${targetDir}`,
+        error: `Could not find package.json in directory: ${targetDir}`,
       };
     }
   } catch {
@@ -62,7 +63,7 @@ export async function validateProject(
       projectType: 'other',
       scriptSequence: [],
       warnings: [],
-      error: `No se encontró package.json en el directorio: ${targetDir}`,
+      error: `Could not find package.json in directory: ${targetDir}`,
     };
   }
 
@@ -86,7 +87,7 @@ export async function validateProject(
       projectType: 'other',
       scriptSequence: [],
       warnings: [],
-      error: `Error al leer o parsear package.json: ${errMsg}`,
+      error: `Error reading or parsing package.json: ${errMsg}`,
     };
   }
 
@@ -105,7 +106,7 @@ export async function validateProject(
   // Add Lockfile collision warning if Yarn is used (since NodePi is package-manager agnostic but rsyncs node_modules)
   if (packageManager === 'yarn') {
     warnings.push(
-      'Este proyecto utiliza Yarn (yarn.lock). NodePi funciona de manera agnóstica sincronizando archivos en node_modules, pero asegúrate de realizar la instalación inicial con Yarn para evitar conflictos.'
+      'This project uses Yarn (yarn.lock). NodePi functions agnostically by syncing files in node_modules, but make sure to perform the initial installation with Yarn to avoid conflicts.'
     );
   }
 
@@ -124,7 +125,7 @@ export async function validateProject(
 
   if (hasRedpointsDeps) {
     warnings.push(
-      'Se han detectado dependencias de RedPoints. Asegúrate de tener configurado tu acceso al registry privado (Nexus) antes de instalar dependencias.'
+      'RedPoints dependencies detected. Make sure to configure access to the private registry (Nexus) before installing dependencies.'
     );
   }
 
@@ -136,47 +137,51 @@ export async function validateProject(
       const simplifiedPackageJson = {
         name: packageJson.name,
         scripts: packageJson.scripts || {},
-        dependencies: packageJson.dependencies ? Object.keys(packageJson.dependencies) : [],
-        devDependencies: packageJson.devDependencies ? Object.keys(packageJson.devDependencies) : [],
+        dependencies: packageJson.dependencies
+          ? Object.keys(packageJson.dependencies)
+          : [],
+        devDependencies: packageJson.devDependencies
+          ? Object.keys(packageJson.devDependencies)
+          : [],
       };
 
-      const prompt = `Eres un asistente de desarrollo experto y especialista en flujos de inyección y sincronización de dependencias locales (usando NodePi).
-Tu objetivo es deducir los comandos exactos de terminal (scripts) y el tipo de proyecto destino para preparar/instalar el entorno local antes de continuar con la inyección.
+      const prompt = `You are an expert development assistant specializing in local dependency injection and synchronization flows (using NodePi).
+Your goal is to deduce the exact terminal commands (scripts) and target project type to prepare/install the local environment before continuing with the injection.
 
-Sigue estrictamente estas directrices para la secuencia de comandos:
-1. Recomienda únicamente los comandos iniciales necesarios para instalar dependencias y realizar la configuración preliminar del entorno.
-2. Los comandos recomendados en la secuencia deben ser exactamente los definidos en el package.json, sin añadir prefijos de variables de entorno ni modificar su sintaxis.
-3. Excluye por completo comandos destinados a compilar el proyecto o a arrancar servidores de desarrollo.
-4. Identifica y agrega en "warnings" advertencias clave sobre variables de entorno requeridas, red/VPN, hosts locales, certificados o cualquier pre-requisito crítico para configurar el entorno.
+Strictly follow these guidelines for the script sequence:
+1. Recommend only the initial commands required to install dependencies and perform preliminary environment setup.
+2. The recommended commands in the sequence must exactly match those defined in the package.json, without adding environment variable prefixes or altering their syntax.
+3. Exclude completely any commands meant to compile the project or start development servers.
+4. Identify and include key warnings in "warnings" regarding required environment variables, network/VPN, local hosts, certificates, or any critical prerequisites to configure the environment.
 
 ---
-DATOS DEL PROYECTO DESTINO:
-Nombre: ${packageJson.name || 'proyecto'}
-Archivos en la raíz: ${files.join(', ')}
+TARGET PROJECT DATA:
+Name: ${packageJson.name || 'project'}
+Root files: ${files.join(', ')}
 
 <package_json>
 ${JSON.stringify(simplifiedPackageJson, null, 2)}
 </package_json>
 ---
 
-Responde ÚNICAMENTE con un bloque de código JSON encerrado en triples comillas invertidas (\`\`\`json ... \`\`\`) con la siguiente estructura:
+Respond ONLY with a JSON code block enclosed in triple backticks (\`\`\`json ... \`\`\`) with the following structure:
 
 \`\`\`json
 {
   "projectType": "standard-vite" | "bundle-interface-module" | "other",
   "sequence": [
     {
-      "command": "comando_de_consola",
-      "description": "explicación de qué hace este comando en 1 línea"
+      "command": "console_command",
+      "description": "1-line description of what this command does"
     }
   ],
   "warnings": [
-    "advertencia_relevante_1"
+    "relevant_warning_1"
   ]
 }
 \`\`\`
 
-No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
+Do not add any explanatory text before or after the JSON block.`;
 
       const { stdout } = await execa(
         'agy',
@@ -189,7 +194,11 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
           '--print',
           prompt,
         ],
-        { timeout: 45000 }
+        {
+          timeout: 45000,
+          env: process.env,
+          stdin: 'ignore',
+        }
       );
 
       const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
@@ -208,12 +217,26 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
           }
         }
 
-        let sequence = parsed.sequence;
+        let sequence = parsed.sequence.filter(step => {
+          const cmd = step.command.trim().toLowerCase();
+          const isBlacklisted =
+            cmd.includes('start') ||
+            cmd.includes('dev') ||
+            cmd.includes('build') ||
+            cmd.includes('watch') ||
+            cmd.includes('test') ||
+            cmd.includes('lint') ||
+            cmd.includes('format') ||
+            cmd.includes('prettier');
+          return !isBlacklisted;
+        });
+
         if (scripts['setup']) {
           sequence = [
             {
               command: getRunCommand(packageManager, 'setup'),
-              description: 'Inicializa y configura el proyecto para el desarrollo (incluye toda la lógica de preparación e instalación necesaria).',
+              description:
+                'Initializes and configures the project for development (includes all necessary preparation and installation logic).',
             },
           ];
         }
@@ -227,7 +250,15 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
         };
       }
     } catch (err: any) {
-      log.error(`[NodePi] Fallo en la llamada a agy al analizar la estructura del proyecto destino: ${err.message}`);
+      log.error(
+        `[NodePi] agy call failed when analyzing target project structure: ${err.message}`
+      );
+      if (err.stderr) {
+        console.error(pc.red(`\n[agy stderr]:\n${err.stderr}`));
+      }
+      if (err.stdout) {
+        console.error(pc.yellow(`\n[agy stdout]:\n${err.stdout}`));
+      }
       process.exit(1);
       return undefined as any;
     }
@@ -248,7 +279,7 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
       {
         command: installCmd,
         description:
-          'Instala dependencias locales e inicializa el entorno aislado con install-devApp.',
+          'Installs local dependencies and initializes the isolated environment using install-devApp.',
       },
     ];
 
@@ -256,7 +287,7 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
       sequence.push({
         command: getRunCommand(packageManager, 'conf'),
         description:
-          'Descarga las configuraciones del entorno de pruebas (APIs de Portal).',
+          'Downloads the testing environment configurations (Portal APIs).',
       });
     }
 
@@ -281,7 +312,7 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
     if (scripts['setup']) {
       sequence.push({
         command: getRunCommand(packageManager, 'setup'),
-        description: 'Inicializa y configura el proyecto para el desarrollo.',
+        description: 'Initializes and configures the project for development.',
       });
     } else {
       const installCmd = scripts['install:dependencies']
@@ -289,13 +320,13 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
         : `${packageManager} install`;
       sequence.push({
         command: installCmd,
-        description: 'Instala las dependencias del proyecto.',
+        description: 'Installs the project dependencies.',
       });
 
       if (scripts['conf']) {
         sequence.push({
           command: getRunCommand(packageManager, 'conf'),
-          description: 'Descarga las configuraciones de APIs de desarrollo.',
+          description: 'Downloads the development API configurations.',
         });
       }
     }
@@ -315,7 +346,7 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
   if (scripts['setup']) {
     fallbackSequence.push({
       command: getRunCommand(packageManager, 'setup'),
-      description: 'Inicializa y configura el proyecto.',
+      description: 'Initializes and configures the project.',
     });
   } else {
     const installCmd = scripts['install:dependencies']
@@ -323,13 +354,13 @@ No agregues texto explicativo ni antes ni después del bloque de código JSON.`;
       : `${packageManager} install`;
     fallbackSequence.push({
       command: installCmd,
-      description: 'Instala las dependencias del proyecto.',
+      description: 'Installs the project dependencies.',
     });
 
     if (scripts['conf']) {
       fallbackSequence.push({
         command: getRunCommand(packageManager, 'conf'),
-        description: 'Descarga las configuraciones de APIs de desarrollo.',
+        description: 'Downloads the development API configurations.',
       });
     }
   }
